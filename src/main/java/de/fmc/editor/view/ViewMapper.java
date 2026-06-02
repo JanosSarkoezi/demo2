@@ -12,10 +12,16 @@ import java.util.UUID;
 public class ViewMapper implements RegistryListener {
 
     private final Pane canvas; // Das JavaFX Zeichenfenster
+    private final de.fmc.editor.core.CoreRegistry registry;
     private final Map<UUID, Shape> visualNodes = new HashMap<>();
 
-    public ViewMapper(Pane canvas) {
+    // Hilfsvariablen für Drag & Drop
+    private double mouseAnchorX;
+    private double mouseAnchorY;
+
+    public ViewMapper(Pane canvas, de.fmc.editor.core.CoreRegistry registry) {
         this.canvas = canvas;
+        this.registry = registry;
     }
 
     @Override
@@ -38,6 +44,36 @@ public class ViewMapper implements RegistryListener {
         // Wichtig aus den Richtlinien: Nur die ID in den Properties speichern
         shape.getProperties().put("UUID", obj.id());
 
+        // Event-Handling für Drag & Drop
+        shape.setOnMousePressed(event -> {
+            mouseAnchorX = event.getSceneX();
+            mouseAnchorY = event.getSceneY();
+        });
+
+        shape.setOnMouseDragged(event -> {
+            double deltaX = event.getSceneX() - mouseAnchorX;
+            double deltaY = event.getSceneY() - mouseAnchorY;
+
+            // Wir setzen die Anker neu für die nächste Bewegung
+            mouseAnchorX = event.getSceneX();
+            mouseAnchorY = event.getSceneY();
+
+            UUID id = (UUID) shape.getProperties().get("UUID");
+            // Aktuelle Position aus der Shape holen (da diese dem Modell entspricht)
+            double currentX = 0;
+            double currentY = 0;
+            
+            if (shape instanceof Circle c) {
+                currentX = c.getCenterX();
+                currentY = c.getCenterY();
+            } else if (shape instanceof javafx.scene.shape.Rectangle r) {
+                currentX = r.getX() + (r.getWidth() / 2);
+                currentY = r.getY() + (r.getHeight() / 2);
+            }
+
+            registry.moveObject(id, currentX + deltaX, currentY + deltaY);
+        });
+
         visualNodes.put(obj.id(), shape);
         canvas.getChildren().add(shape);
     }
@@ -48,6 +84,8 @@ public class ViewMapper implements RegistryListener {
             circle.setCenterX(x);
             circle.setCenterY(y);
         } else if (shape instanceof javafx.scene.shape.Rectangle rect) {
+            // Wir müssen hier vorsichtig sein: Das obj.x() im switch oben ist der Ursprung.
+            // In CoreRegistry wird das Objekt aber komplett neu erzeugt.
             rect.setX(x - (rect.getWidth() / 2));
             rect.setY(y - (rect.getHeight() / 2));
         }

@@ -17,7 +17,7 @@ public class Main extends Application {
         // 1. Core Komponenten initialisieren
         CoreRegistry registry = new CoreRegistry();
         Pane canvas = new Pane();
-        ViewMapper viewMapper = new ViewMapper(canvas);
+        ViewMapper viewMapper = new ViewMapper(canvas, registry);
 
         // 2. ViewMapper als Listener registrieren
         registry.addListener(viewMapper);
