@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+
+<HBox xmlns:fx="http://javafx.com/fxml" fx:controller="de.fmc.editor.controller.MainController" prefHeight="600" prefWidth="800">
+    <fx:include fx:id="toolbar" source="toolbar-view.fxml" />
+    <fx:include fx:id="canvas" source="canvas-view.fxml" />
+</HBox>

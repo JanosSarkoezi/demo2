@@ -1,0 +1,64 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.shape.*?>
+
+<VBox fx:id="toolbarContainer" spacing="10.0" prefWidth="150.0"
+      stylesheets="@css/style.css" styleClass="toolbar"
+      xmlns:fx="http://javafx.com/fxml"
+      fx:controller="de.fmc.editor.controller.ToolbarController">
+
+    <padding>
+        <Insets top="15" right="12" bottom="15" left="12"/>
+    </padding>
+
+    <fx:define>
+        <ToggleGroup fx:id="toolGroup"/>
+    </fx:define>
+
+    <Label text="Shapes" styleClass="section-label"/>
+
+    <ToggleButton fx:id="circleButton" toggleGroup="$toolGroup"
+                  maxWidth="Infinity" styleClass="tool-button"
+                  text="_Circle" onAction="#onCircleClick">
+        <tooltip><Tooltip text="Kreis zeichnen (Alt+C)"/></tooltip>
+        <graphic>
+            <Circle radius="8.0" styleClass="tool-icon-circle"/>
+        </graphic>
+    </ToggleButton>
+
+    <ToggleButton fx:id="rectButton" toggleGroup="$toolGroup"
+                  maxWidth="Infinity" styleClass="tool-button"
+                  text="_Rectangle" onAction="#onRectClick">
+        <tooltip><Tooltip text="Rechteck zeichnen (Alt+R)"/></tooltip>
+        <graphic>
+            <Rectangle width="16.0" height="16.0" styleClass="tool-icon-rect"/>
+        </graphic>
+    </ToggleButton>
+
+    <ToggleButton fx:id="connectButton" toggleGroup="$toolGroup"
+                  maxWidth="Infinity" styleClass="tool-button"
+                  text="_Verbinden" onAction="#onConnClick">
+        <tooltip><Tooltip text="Verbindungsmodus (Alt+V)"/></tooltip>
+        <graphic>
+            <Line endX="15" stroke="#3498db" strokeWidth="2"/>
+        </graphic>
+    </ToggleButton>
+
+    <Separator>
+        <VBox.margin><Insets top="10" bottom="10"/></VBox.margin>
+    </Separator>
+
+    <Label text="Settings" styleClass="section-label"/>
+
+    <VBox spacing="8">
+        <CheckBox fx:id="snapToGridCheckbox" text="Snap to Grid"
+                  selected="true" styleClass="settings-checkbox"
+                  onAction="#onSnapToGridAction"/>
+
+        <CheckBox fx:id="stickyCheckbox" text="Verkleben"
+                  styleClass="settings-checkbox"/>
+    </VBox>
+</VBox>

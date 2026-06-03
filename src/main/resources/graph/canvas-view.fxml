@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import de.fmc.editor.view.GraphView?>
+
+<GraphView fx:id="drawingPane" xmlns:fx="http://javafx.com/fxml"
+      fx:controller="de.fmc.editor.controller.CanvasController"
+      onMousePressed="#onMousePressed"
+      onMouseDragged="#onMouseDragged"
+      onMouseReleased="#onMouseReleased"
+      onScroll="#handleScroll" />
