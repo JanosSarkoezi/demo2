@@ -22,7 +22,7 @@
 
     <ToggleButton fx:id="circleButton" toggleGroup="$toolGroup"
                   maxWidth="Infinity" styleClass="tool-button"
-                  text="_Circle" onAction="#onCircleClick">
+                  text="_Circle" onAction="#onCircleClick" selected="true">
         <tooltip><Tooltip text="Kreis zeichnen (Alt+C)"/></tooltip>
         <graphic>
             <Circle radius="8.0" styleClass="tool-icon-circle"/>

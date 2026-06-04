@@ -1,5 +1,8 @@
 package de.fmc.editor.controller;
 
+import de.fmc.editor.core.model.FmcType;
+import de.fmc.editor.state.CreateState;
+import de.fmc.editor.state.SelectOrMoveState;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
@@ -21,14 +24,42 @@ public class ToolbarController {
     @FXML
     private CheckBox stickyCheckbox;
 
+    private CanvasController canvasController;
+
+    public void setCanvasController(CanvasController canvasController) {
+        this.canvasController = canvasController;
+    }
+
+    public FmcType getSelectedType() {
+        if (circleButton.isSelected()) return FmcType.KREIS;
+        if (rectButton.isSelected()) return FmcType.QUADRAT;
+        return null;
+    }
+
+    public void clearSelection() {
+        toolGroup.selectToggle(null);
+    }
+
+    public boolean isSticky() {
+        return stickyCheckbox.isSelected();
+    }
+
     @FXML
     public void onCircleClick(ActionEvent event) {
-        // Handle circle tool selection
+        if (circleButton.isSelected()) {
+            canvasController.setCurrentState(new CreateState());
+        } else {
+            canvasController.setCurrentState(new SelectOrMoveState());
+        }
     }
 
     @FXML
     public void onRectClick(ActionEvent event) {
-        // Handle rectangle tool selection
+        if (rectButton.isSelected()) {
+            canvasController.setCurrentState(new CreateState());
+        } else {
+            canvasController.setCurrentState(new SelectOrMoveState());
+        }
     }
 
     @FXML

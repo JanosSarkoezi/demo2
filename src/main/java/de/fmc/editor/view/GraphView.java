@@ -5,5 +5,7 @@ import javafx.scene.layout.Pane;
 public class GraphView extends Pane {
     public GraphView() {
         getStyleClass().add("graph-grid");
+        // Sicherstellen, dass die Pane Mausklicks fängt
+        setFocusTraversable(true);
     }
 }

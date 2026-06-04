@@ -60,7 +60,9 @@
 /* --- NEU: GraphView & Grid --- */
 /* Diese Klasse wird in der GraphView.java per Code zugewiesen */
 .graph-grid {
-    -fx-background-color: white;
+    -fx-background-color: #ffffff;
+    -fx-border-color: #dddddd;
+    -fx-border-width: 1;
 }
 
 /* --- Hilfsklassen --- */
