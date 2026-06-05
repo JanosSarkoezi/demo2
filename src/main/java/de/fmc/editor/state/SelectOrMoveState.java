@@ -6,9 +6,9 @@ import javafx.scene.input.MouseEvent;
 import java.util.UUID;
 
 public class SelectOrMoveState implements EditorState {
-    private UUID draggedObjectId = null;
-    private double lastMouseX;
-    private double lastMouseY;
+    protected UUID draggedObjectId = null;
+    protected double lastMouseX;
+    protected double lastMouseY;
 
     @Override
     public void handleMousePressed(MouseEvent event, CanvasController context) {
