@@ -20,8 +20,17 @@ public class CreateState extends SelectOrMoveState {
         } else {
             FmcType selectedType = context.getToolbarController().getSelectedType();
             if (selectedType != null) {
+                double createX = event.getX();
+                double createY = event.getY();
+
+                if (context.getToolbarController().isSnapToGrid()) {
+                    int gridSize = 20;
+                    createX = Math.round(createX / gridSize) * gridSize;
+                    createY = Math.round(createY / gridSize) * gridSize;
+                }
+
                 UUID layerId = UUID.randomUUID(); 
-                var obj = FmcFactory.createObject(selectedType, event.getX(), event.getY(), layerId);
+                var obj = FmcFactory.createObject(selectedType, createX, createY, layerId);
                 context.getRegistry().addObject(obj);
             }
         }

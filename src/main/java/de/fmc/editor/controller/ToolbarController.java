@@ -44,6 +44,10 @@ public class ToolbarController {
         return stickyCheckbox.isSelected();
     }
 
+    public boolean isSnapToGrid() {
+        return snapToGridCheckbox.isSelected();
+    }
+
     @FXML
     public void onCircleClick(ActionEvent event) {
         if (circleButton.isSelected()) {

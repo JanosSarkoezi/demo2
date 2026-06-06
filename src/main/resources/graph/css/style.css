@@ -61,6 +61,9 @@
 /* Diese Klasse wird in der GraphView.java per Code zugewiesen */
 .graph-grid {
     -fx-background-color: #ffffff;
+    -fx-background-image: 
+        linear-gradient(from 0px 0px to 20px 0px, repeat, #f0f0f0 5%, transparent 5%),
+        linear-gradient(from 0px 0px to 0px 20px, repeat, #f0f0f0 5%, transparent 5%);
     -fx-border-color: #dddddd;
     -fx-border-width: 1;
 }

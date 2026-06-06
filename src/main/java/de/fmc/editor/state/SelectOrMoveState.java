@@ -7,8 +7,8 @@ import java.util.UUID;
 
 public class SelectOrMoveState implements EditorState {
     protected UUID draggedObjectId = null;
-    protected double lastMouseX;
-    protected double lastMouseY;
+    protected double offsetX;
+    protected double offsetY;
 
     @Override
     public void handleMousePressed(MouseEvent event, CanvasController context) {
@@ -16,8 +16,9 @@ public class SelectOrMoveState implements EditorState {
         
         if (hit != null) {
             draggedObjectId = hit.id();
-            lastMouseX = event.getX();
-            lastMouseY = event.getY();
+            // Offset berechnen: Wo innerhalb des Objekts wurde geklickt?
+            offsetX = event.getX() - hit.x();
+            offsetY = event.getY() - hit.y();
         } else {
             draggedObjectId = null;
         }
@@ -26,20 +27,22 @@ public class SelectOrMoveState implements EditorState {
     @Override
     public void handleMouseDragged(MouseEvent event, CanvasController context) {
         if (draggedObjectId != null) {
-            double deltaX = event.getX() - lastMouseX;
-            double deltaY = event.getY() - lastMouseY;
-
             context.getRegistry().getObjects().stream()
                 .filter(obj -> obj.id().equals(draggedObjectId))
                 .findFirst()
                 .ifPresent(obj -> {
-                    double newX = obj.x() + deltaX;
-                    double newY = obj.y() + deltaY;
+                    // Neue Zielposition basierend auf Mausposition abzüglich des initialen Offsets
+                    double newX = event.getX() - offsetX;
+                    double newY = event.getY() - offsetY;
+
+                    if (context.getToolbarController().isSnapToGrid()) {
+                        int gridSize = 20;
+                        newX = Math.round(newX / gridSize) * gridSize;
+                        newY = Math.round(newY / gridSize) * gridSize;
+                    }
+
                     context.getRegistry().moveObject(draggedObjectId, newX, newY);
                 });
-
-            lastMouseX = event.getX();
-            lastMouseY = event.getY();
         }
     }
 
