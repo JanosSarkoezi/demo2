@@ -15,10 +15,17 @@ public class SelectOrMoveState implements EditorState {
         FmcObject hit = context.findObjectAt(event.getX(), event.getY());
         
         if (hit != null) {
-            draggedObjectId = hit.id();
-            // Offset berechnen: Wo innerhalb des Objekts wurde geklickt?
-            offsetX = event.getX() - hit.x();
-            offsetY = event.getY() - hit.y();
+            if (event.getClickCount() == 2) {
+                // Doppel-Klick wechselt in den Resize-Modus
+                ResizeState nextState = new ResizeState(hit.id());
+                context.setCurrentState(nextState);
+                nextState.enterState(context);
+            } else {
+                draggedObjectId = hit.id();
+                // Offset berechnen: Wo innerhalb des Objekts wurde geklickt?
+                offsetX = event.getX() - hit.x();
+                offsetY = event.getY() - hit.y();
+            }
         } else {
             draggedObjectId = null;
         }

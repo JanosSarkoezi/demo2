@@ -15,6 +15,8 @@ public class MainController {
     @FXML
     private CanvasController canvasController;
 
+    private ViewMapper viewMapper;
+
     @FXML
     public void initialize() {
         System.out.println("MainController initialized");
@@ -30,7 +32,9 @@ public class MainController {
         canvasController.setCurrentState(new de.fmc.editor.state.CreateState());
         
         // Den ViewMapper hier initialisieren, damit er sicher die Pane vom CanvasController nutzt
-        ViewMapper viewMapper = new ViewMapper(canvasController.getDrawingPane(), registry);
+        this.viewMapper = new ViewMapper(canvasController.getDrawingPane(), registry);
         registry.addListener(viewMapper);
+        
+        canvasController.setViewMapper(viewMapper);
     }
 }

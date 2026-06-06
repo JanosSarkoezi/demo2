@@ -37,6 +37,15 @@ public class CoreRegistry {
         }
     }
 
+    public void resizeObject(UUID id, double newW, double newH) {
+        FmcObject original = objects.get(id);
+        if (original != null) {
+            FmcObject updated = FmcFactory.resizeObject(original, newW, newH);
+            objects.put(id, updated);
+            fireEvent(new RegistryEvent.ObjectResized(id, newW, newH));
+        }
+    }
+
     public void removeObject(UUID id) {
         if (objects.containsKey(id)) {
             objects.remove(id);

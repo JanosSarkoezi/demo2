@@ -1,3 +1,5 @@
+gemini --resume ae240cdc-9149-4641-9760-2c776909a8eb
+
 Das ist ein extrem kluger Ansatz. Wenn man ein solches Projekt in Etappen baut,
 neigt man oft dazu, in frühen Phasen Abkürzungen zu nehmen, die einem später
 das Genick brechen. Oder man baut zu früh zu viel Abstraktion ein

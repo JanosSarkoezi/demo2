@@ -8,6 +8,8 @@ public record FmcObject(
     FmcType type,
     double x,
     double y,
+    double width,
+    double height,
     UUID layerId
 ) {
     public FmcObject {

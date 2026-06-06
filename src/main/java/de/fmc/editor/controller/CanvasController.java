@@ -5,6 +5,7 @@ import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.state.EditorState;
 import de.fmc.editor.state.SelectOrMoveState;
 import de.fmc.editor.view.GraphView;
+import de.fmc.editor.view.ViewMapper;
 import javafx.fxml.FXML;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
@@ -16,6 +17,7 @@ public class CanvasController {
 
     private CoreRegistry registry;
     private ToolbarController toolbarController;
+    private ViewMapper viewMapper;
     private EditorState currentState = new SelectOrMoveState();
 
     public void setRegistry(CoreRegistry registry) {
@@ -26,8 +28,21 @@ public class CanvasController {
         this.toolbarController = toolbarController;
     }
 
+    public void setViewMapper(ViewMapper viewMapper) {
+        this.viewMapper = viewMapper;
+    }
+
     public void setCurrentState(EditorState state) {
         this.currentState = state;
+        
+        // Wenn wir den ResizeState verlassen, Handles löschen
+        if (viewMapper != null && !(state instanceof de.fmc.editor.state.ResizeState)) {
+            viewMapper.setSelectedObject(null, null);
+        }
+    }
+
+    public ViewMapper getViewMapper() {
+        return viewMapper;
     }
 
     public CoreRegistry getRegistry() {
@@ -66,12 +81,15 @@ public class CanvasController {
         return registry.getObjects().stream()
             .filter(obj -> {
                 if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS) {
+                    double radius = obj.width() / 2;
                     double dx = obj.x() - x;
                     double dy = obj.y() - y;
-                    return (dx * dx + dy * dy) <= (20 * 20); // Radius 20
+                    return (dx * dx + dy * dy) <= (radius * radius);
                 } else if (obj.type() == de.fmc.editor.core.model.FmcType.QUADRAT) {
-                    return x >= (obj.x() - 15) && x <= (obj.x() + 15) &&
-                           y >= (obj.y() - 15) && y <= (obj.y() + 15);
+                    double halfW = obj.width() / 2;
+                    double halfH = obj.height() / 2;
+                    return x >= (obj.x() - halfW) && x <= (obj.x() + halfW) &&
+                           y >= (obj.y() - halfH) && y <= (obj.y() + halfH);
                 }
                 return false;
             })
