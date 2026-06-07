@@ -37,4 +37,21 @@ public class MainController {
         
         canvasController.setViewMapper(viewMapper);
     }
+
+    public void setupShortcuts(javafx.scene.Scene scene) {
+        scene.setOnKeyPressed(event -> {
+            if (event.isControlDown()) {
+                if (event.getCode() == javafx.scene.input.KeyCode.Z) {
+                    if (event.isShiftDown()) {
+                        System.out.println("Redo triggered");
+                        canvasController.getCommandHistory().redo();
+                    } else {
+                        System.out.println("Undo triggered");
+                        canvasController.getCommandHistory().undo();
+                    }
+                    event.consume();
+                }
+            }
+        });
+    }
 }

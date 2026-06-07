@@ -27,6 +27,8 @@ public class Main extends Application {
 
         // 5. JavaFX Bühne aufbauen
         Scene scene = new Scene(root, 1000, 700);
+        mainController.setupShortcuts(scene);
+        
         primaryStage.setTitle("FMC Editor - Prototype");
         primaryStage.setScene(scene);
         primaryStage.show();

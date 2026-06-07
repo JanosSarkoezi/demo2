@@ -6,7 +6,13 @@ import de.fmc.editor.core.factory.FmcFactory;
 import de.fmc.editor.core.model.Connection;
 import de.fmc.editor.core.model.FmcObject;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collection;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 
 public class CoreRegistry {
     private final Map<UUID, FmcObject> objects = new HashMap<>();
@@ -31,18 +37,23 @@ public class CoreRegistry {
     public void moveObject(UUID id, double newX, double newY) {
         FmcObject original = objects.get(id);
         if (original != null) {
-            FmcObject updated = FmcFactory.moveObject(original, newX, newY);
-            objects.put(id, updated);
-            fireEvent(new RegistryEvent.ObjectMoved(id, newX, newY));
+            // Nur ändern, wenn wirklich eine Bewegung stattfindet
+            if (original.x() != newX || original.y() != newY) {
+                FmcObject updated = FmcFactory.moveObject(original, newX, newY);
+                objects.put(id, updated);
+                fireEvent(new RegistryEvent.ObjectMoved(id, newX, newY));
+            }
         }
     }
 
     public void resizeObject(UUID id, double newW, double newH) {
         FmcObject original = objects.get(id);
         if (original != null) {
-            FmcObject updated = FmcFactory.resizeObject(original, newW, newH);
-            objects.put(id, updated);
-            fireEvent(new RegistryEvent.ObjectResized(id, newW, newH));
+            if (original.width() != newW || original.height() != newH) {
+                FmcObject updated = FmcFactory.resizeObject(original, newW, newH);
+                objects.put(id, updated);
+                fireEvent(new RegistryEvent.ObjectResized(id, newW, newH));
+            }
         }
     }
 

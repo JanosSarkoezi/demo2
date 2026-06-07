@@ -3,6 +3,7 @@ package de.fmc.editor.controller;
 import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.state.EditorState;
+import de.fmc.editor.state.MouseEventData;
 import de.fmc.editor.state.SelectOrMoveState;
 import de.fmc.editor.view.GraphView;
 import de.fmc.editor.view.ViewMapper;
@@ -19,6 +20,16 @@ public class CanvasController {
     private ToolbarController toolbarController;
     private ViewMapper viewMapper;
     private EditorState currentState = new SelectOrMoveState();
+
+    private final de.fmc.editor.core.command.CommandHistory commandHistory = new de.fmc.editor.core.command.CommandHistory();
+
+    public de.fmc.editor.core.command.CommandHistory getCommandHistory() {
+        return commandHistory;
+    }
+
+    public EditorState getCurrentState() {
+        return currentState;
+    }
 
     public void setRegistry(CoreRegistry registry) {
         this.registry = registry;
@@ -56,19 +67,37 @@ public class CanvasController {
     @FXML
     public void onMousePressed(MouseEvent event) {
         javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
-        // Wir könnten hier worldPos an den State übergeben, aber wir müssten das Interface ändern.
-        // Vorerst lassen wir findObjectAt die Transformation intern machen oder wir ändern das Interface.
-        currentState.handleMousePressed(event, this);
+        MouseEventData data = new MouseEventData(
+            worldPos.getX(), worldPos.getY(),
+            event.getSceneX(), event.getSceneY(),
+            event.getClickCount(),
+            event.isPrimaryButtonDown()
+        );
+        currentState.handleMousePressed(data, this);
     }
 
     @FXML
     public void onMouseDragged(MouseEvent event) {
-        currentState.handleMouseDragged(event, this);
+        javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
+        MouseEventData data = new MouseEventData(
+            worldPos.getX(), worldPos.getY(),
+            event.getSceneX(), event.getSceneY(),
+            event.getClickCount(),
+            event.isPrimaryButtonDown()
+        );
+        currentState.handleMouseDragged(data, this);
     }
 
     @FXML
     public void onMouseReleased(MouseEvent event) {
-        currentState.handleMouseReleased(event, this);
+        javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
+        MouseEventData data = new MouseEventData(
+            worldPos.getX(), worldPos.getY(),
+            event.getSceneX(), event.getSceneY(),
+            event.getClickCount(),
+            event.isPrimaryButtonDown()
+        );
+        currentState.handleMouseReleased(data, this);
     }
 
     @FXML
@@ -81,11 +110,7 @@ public class CanvasController {
     }
 
     public FmcObject findObjectAt(double x, double y) {
-        // Da die Events von der Pane kommen, müssen wir sie erst in Weltkoordinaten umrechnen,
-        // falls sie noch nicht umgerechnet sind.
-        // In den States wird aktuell event.getX()/getY() verwendet.
-        // Wir transformieren hier sicherheitshalber von Scene-Koordinaten, 
-        // falls wir findObjectAt von woanders aufrufen.
+        // x und y sind hier bereits Weltkoordinaten
         return registry.getObjects().stream()
             .filter(obj -> {
                 if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS) {
@@ -103,9 +128,5 @@ public class CanvasController {
             })
             .findFirst()
             .orElse(null);
-    }
-
-    public javafx.geometry.Point2D getWorldPoint(MouseEvent event) {
-        return drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
     }
 }

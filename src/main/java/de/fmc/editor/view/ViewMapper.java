@@ -1,9 +1,14 @@
 package de.fmc.editor.view;
 
+import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.event.RegistryEvent;
 import de.fmc.editor.core.event.RegistryListener;
+import de.fmc.editor.core.model.Handle;
+import de.fmc.editor.core.model.HandleType;
+import de.fmc.editor.state.ResizeState;
 import javafx.scene.Group;
 import javafx.scene.shape.Circle;
+import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +19,7 @@ import java.util.UUID;
 public class ViewMapper implements RegistryListener {
 
     private final GraphView graphView;
-    private final de.fmc.editor.core.CoreRegistry registry;
+    private final CoreRegistry registry;
     private final Map<UUID, Shape> visualNodes = new HashMap<>();
     private final List<Shape> activeHandles = new ArrayList<>();
     private UUID selectedObjectId = null;
@@ -22,6 +27,29 @@ public class ViewMapper implements RegistryListener {
     public ViewMapper(GraphView graphView, de.fmc.editor.core.CoreRegistry registry) {
         this.graphView = graphView;
         this.registry = registry;
+    }
+
+    public static List<Handle> getHandles(de.fmc.editor.core.model.FmcObject obj) {
+        List<Handle> handles = new ArrayList<>();
+        double hw = obj.width() / 2;
+        double hh = obj.height() / 2;
+
+        if (obj.type() == de.fmc.editor.core.model.FmcType.QUADRAT) {
+            handles.add(new Handle(HandleType.NW, obj.x() - hw, obj.y() - hh));
+            handles.add(new Handle(HandleType.N,  obj.x(),      obj.y() - hh));
+            handles.add(new Handle(HandleType.NE, obj.x() + hw, obj.y() - hh));
+            handles.add(new Handle(HandleType.E,  obj.x() + hw, obj.y()));
+            handles.add(new Handle(HandleType.SE, obj.x() + hw, obj.y() + hh));
+            handles.add(new Handle(HandleType.S,  obj.x(),      obj.y() + hh));
+            handles.add(new Handle(HandleType.SW, obj.x() - hw, obj.y() + hh));
+            handles.add(new Handle(HandleType.W,  obj.x() - hw, obj.y()));
+        } else if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS) {
+            handles.add(new Handle(HandleType.N, obj.x(),      obj.y() - hh));
+            handles.add(new Handle(HandleType.E, obj.x() + hw, obj.y()));
+            handles.add(new Handle(HandleType.S, obj.x(),      obj.y() + hh));
+            handles.add(new Handle(HandleType.W, obj.x() - hw, obj.y()));
+        }
+        return handles;
     }
 
     @Override
@@ -33,15 +61,35 @@ public class ViewMapper implements RegistryListener {
             case RegistryEvent.ObjectMoved(var id, var x, var y) -> handleObjectMoved(id, x, y);
             case RegistryEvent.ObjectResized(var id, var w, var h) -> handleObjectResized(id, w, h);
         }
+
+        // Falls das selektierte Objekt geändert wurde (z.B. durch Undo/Redo), Handles refreshen
+        if (selectedObjectId != null) {
+            UUID affectedId = switch (event) {
+                case RegistryEvent.ObjectMoved(var id, var x, var y) -> id;
+                case RegistryEvent.ObjectResized(var id, var w, var h) -> id;
+                default -> null;
+            };
+
+            if (selectedObjectId.equals(affectedId)) {
+                registry.getObjects().stream()
+                    .filter(o -> o.id().equals(selectedObjectId))
+                    .findFirst()
+                    .ifPresent(obj -> refreshHandles(getHandles(obj)));
+            }
+        }
     }
 
     // Hilfsmethode um Handles anzuzeigen (wird von außen gesteuert)
-    public void setSelectedObject(UUID id, List<de.fmc.editor.state.ResizeState.Handle> handles) {
+    public void setSelectedObject(UUID id, List<Handle> handles) {
         this.selectedObjectId = id;
+        refreshHandles(handles);
+    }
+
+    private void refreshHandles(List<Handle> handles) {
         graphView.getUiLayer().getChildren().clear();
         activeHandles.clear();
 
-        if (id != null && handles != null) {
+        if (selectedObjectId != null && handles != null) {
             for (var h : handles) {
                 var rect = new javafx.scene.shape.Rectangle(h.x() - 4, h.y() - 4, 8, 8);
                 rect.setFill(javafx.scene.paint.Color.BLACK);
@@ -56,7 +104,7 @@ public class ViewMapper implements RegistryListener {
     private void handleObjectAdded(de.fmc.editor.core.model.FmcObject obj) {
         Shape shape = switch (obj.type()) {
             case KREIS -> new Circle(obj.x(), obj.y(), obj.width() / 2);
-            case QUADRAT -> new javafx.scene.shape.Rectangle(obj.x() - (obj.width() / 2), obj.y() - (obj.height() / 2), obj.width(), obj.height());
+            case QUADRAT -> new Rectangle(obj.x() - (obj.width() / 2), obj.y() - (obj.height() / 2), obj.width(), obj.height());
             case WEGPUNKT -> new Circle(obj.x(), obj.y(), 5);
         };
 
