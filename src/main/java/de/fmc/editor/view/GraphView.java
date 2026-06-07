@@ -55,4 +55,40 @@ public class GraphView extends Pane {
     public Group getWorld() {
         return world;
     }
+
+    // Hilfsmethode für die Koordinaten-Umrechnung (für die States)
+    public javafx.geometry.Point2D getMouseInWorld(double sceneX, double sceneY) {
+        return world.sceneToLocal(sceneX, sceneY);
+    }
+
+    public void handleZoom(javafx.scene.input.ScrollEvent event) {
+        double delta = event.getDeltaY();
+        if (delta == 0.0 || !event.isControlDown()) return;
+
+        double zoomFactor = (delta > 0) ? 1.1 : 0.9;
+
+        // Aktuellen Scale abrufen
+        double oldScale = zoomTransform.getX();
+        double newScale = oldScale * zoomFactor;
+
+        if (newScale < MIN_SCALE || newScale > MAX_SCALE) return;
+
+        double mouseX = event.getSceneX();
+        double mouseY = event.getSceneY();
+
+        javafx.geometry.Point2D mouseInWorldBefore = world.sceneToLocal(mouseX, mouseY);
+
+        zoomTransform.setX(newScale);
+        zoomTransform.setY(newScale);
+
+        javafx.geometry.Point2D mouseInWorldAfter = world.sceneToLocal(mouseX, mouseY);
+
+        double deltaX = mouseInWorldAfter.getX() - mouseInWorldBefore.getX();
+        double deltaY = mouseInWorldAfter.getY() - mouseInWorldBefore.getY();
+
+        world.setTranslateX(world.getTranslateX() + deltaX * newScale);
+        world.setTranslateY(world.getTranslateY() + deltaY * newScale);
+
+        event.consume();
+    }
 }

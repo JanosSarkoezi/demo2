@@ -41,10 +41,11 @@ public class ResizeState implements EditorState {
             return;
         }
 
-        activeHandle = findHandleAt(obj, event.getX(), event.getY());
+        javafx.geometry.Point2D worldPos = context.getWorldPoint(event);
+        activeHandle = findHandleAt(obj, worldPos.getX(), worldPos.getY());
         if (activeHandle == null) {
             // Wenn kein Handle getroffen wurde, prüfen wir ob ein anderes Objekt getroffen wurde
-            FmcObject hit = context.findObjectAt(event.getX(), event.getY());
+            FmcObject hit = context.findObjectAt(worldPos.getX(), worldPos.getY());
             if (hit != null) {
                 if (hit.id().equals(targetObjectId)) {
                     // Wieder das gleiche Objekt -> Move-Modus innerhalb von Resize? 
@@ -62,8 +63,8 @@ public class ResizeState implements EditorState {
                 context.setCurrentState(new SelectOrMoveState());
             }
         } else {
-            lastMouseX = event.getX();
-            lastMouseY = event.getY();
+            lastMouseX = worldPos.getX();
+            lastMouseY = worldPos.getY();
         }
     }
 
@@ -74,8 +75,9 @@ public class ResizeState implements EditorState {
         FmcObject obj = getTargetObject(context);
         if (obj == null) return;
 
-        double deltaX = event.getX() - lastMouseX;
-        double deltaY = event.getY() - lastMouseY;
+        javafx.geometry.Point2D worldPos = context.getWorldPoint(event);
+        double deltaX = worldPos.getX() - lastMouseX;
+        double deltaY = worldPos.getY() - lastMouseY;
 
         double newW = obj.width();
         double newH = obj.height();
@@ -119,8 +121,8 @@ public class ResizeState implements EditorState {
             context.getViewMapper().setSelectedObject(targetObjectId, getHandles(updated));
         }
         
-        lastMouseX = event.getX();
-        lastMouseY = event.getY();
+        lastMouseX = worldPos.getX();
+        lastMouseY = worldPos.getY();
     }
 
     @Override

@@ -12,7 +12,8 @@ public class CreateState extends SelectOrMoveState {
     public void handleMousePressed(MouseEvent event, CanvasController context) {
         if (!event.isPrimaryButtonDown()) return;
 
-        var hit = context.findObjectAt(event.getX(), event.getY());
+        javafx.geometry.Point2D worldPos = context.getWorldPoint(event);
+        var hit = context.findObjectAt(worldPos.getX(), worldPos.getY());
         if (hit != null) {
             // Wir nutzen die Bewegungs-Logik der Basisklasse,
             // bleiben aber in diesem Zustand und lassen die Toolbar aktiv.
@@ -20,8 +21,8 @@ public class CreateState extends SelectOrMoveState {
         } else {
             FmcType selectedType = context.getToolbarController().getSelectedType();
             if (selectedType != null) {
-                double createX = event.getX();
-                double createY = event.getY();
+                double createX = worldPos.getX();
+                double createY = worldPos.getY();
 
                 if (context.getToolbarController().isSnapToGrid()) {
                     int gridSize = 20;

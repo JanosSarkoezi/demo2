@@ -55,6 +55,9 @@ public class CanvasController {
 
     @FXML
     public void onMousePressed(MouseEvent event) {
+        javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
+        // Wir könnten hier worldPos an den State übergeben, aber wir müssten das Interface ändern.
+        // Vorerst lassen wir findObjectAt die Transformation intern machen oder wir ändern das Interface.
         currentState.handleMousePressed(event, this);
     }
 
@@ -70,7 +73,7 @@ public class CanvasController {
 
     @FXML
     public void handleScroll(ScrollEvent event) {
-        // Handle scroll (zoom?)
+        drawingPane.handleZoom(event);
     }
 
     public GraphView getDrawingPane() {
@@ -78,6 +81,11 @@ public class CanvasController {
     }
 
     public FmcObject findObjectAt(double x, double y) {
+        // Da die Events von der Pane kommen, müssen wir sie erst in Weltkoordinaten umrechnen,
+        // falls sie noch nicht umgerechnet sind.
+        // In den States wird aktuell event.getX()/getY() verwendet.
+        // Wir transformieren hier sicherheitshalber von Scene-Koordinaten, 
+        // falls wir findObjectAt von woanders aufrufen.
         return registry.getObjects().stream()
             .filter(obj -> {
                 if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS) {
@@ -95,5 +103,9 @@ public class CanvasController {
             })
             .findFirst()
             .orElse(null);
+    }
+
+    public javafx.geometry.Point2D getWorldPoint(MouseEvent event) {
+        return drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
     }
 }
