@@ -6,9 +6,12 @@ import java.util.UUID;
 
 public class FmcFactory {
     public static FmcObject createObject(FmcType type, double x, double y, UUID layerId) {
-        double w = (type == FmcType.KREIS) ? 40 : 30;
-        double h = (type == FmcType.KREIS) ? 40 : 30;
-        return new FmcObject(UUID.randomUUID(), type, x, y, w, h, layerId);
+        UUID id = UUID.randomUUID();
+        return switch (type) {
+            case KREIS -> new FmcObject(id, type, x, y, 40, 40, layerId);
+            case QUADRAT -> new FmcObject(id, type, x, y, 30, 30, layerId);
+            case WEGPUNKT -> new FmcObject(id, type, x, y, 10 , 10, layerId);
+        };
     }
 
     public static FmcObject moveObject(FmcObject original, double newX, double newY) {

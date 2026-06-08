@@ -13,6 +13,7 @@ public sealed interface RegistryEvent {
 
     record ConnectionAdded(UUID id, Connection connection) implements RegistryEvent {}
     record ConnectionRemoved(UUID id) implements RegistryEvent {}
+    record ConnectionUpdated(UUID id, Connection connection) implements RegistryEvent {}
 
     record LayerAdded(Layer layer) implements RegistryEvent {}
     record LayerRemoved(UUID id) implements RegistryEvent {}

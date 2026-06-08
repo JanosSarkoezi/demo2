@@ -8,8 +8,16 @@ public class CommandHistory {
 
     public void executeCommand(Command cmd) {
         cmd.execute();
+        addExecutedCommand(cmd);
+    }
+
+    public void addExecutedCommand(Command cmd) {
         undoStack.push(cmd);
-        redoStack.clear(); // Sobald eine neue Aktion passiert, verfällt der Redo-Stack
+        redoStack.clear();
+    }
+
+    public void clearRedoStack() {
+        redoStack.clear();
     }
 
     public void undo() {

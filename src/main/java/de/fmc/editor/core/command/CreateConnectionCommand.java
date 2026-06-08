@@ -10,6 +10,7 @@ public class CreateConnectionCommand implements Command {
     private final UUID targetId;
     private final List<UUID> waypointIds;
     private UUID createdConnectionId;
+    private boolean success = false;
 
     public CreateConnectionCommand(CoreRegistry registry, UUID sourceId, UUID targetId, List<UUID> waypointIds) {
         this.registry = registry;
@@ -21,6 +22,11 @@ public class CreateConnectionCommand implements Command {
     @Override
     public void execute() {
         createdConnectionId = registry.addConnection(sourceId, targetId, waypointIds);
+        this.success = (createdConnectionId != null);
+    }
+
+    public boolean isSuccess() {
+        return success;
     }
 
     @Override

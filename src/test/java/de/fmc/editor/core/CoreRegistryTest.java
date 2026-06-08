@@ -92,4 +92,24 @@ public class CoreRegistryTest {
         registry.setLayerVisibility(CoreRegistry.DEFAULT_LAYER_ID, false);
         assertTrue(visibilityFired.get(), "LayerVisibilityChanged-Event wurde nicht gefeuert!");
     }
+
+    @Test
+    public void testWaypointLayerInitialization() {
+        CoreRegistry registry = new CoreRegistry();
+        assertTrue(registry.getLayers().containsKey(CoreRegistry.WAYPOINT_LAYER_ID), "Waypoint-Layer sollte existieren!");
+        assertFalse(registry.getLayers().get(CoreRegistry.WAYPOINT_LAYER_ID).visible(), "Waypoint-Layer sollte initial unsichtbar sein!");
+
+        AtomicBoolean visibilityFired = new AtomicBoolean(false);
+        registry.addListener(event -> {
+            if (event instanceof RegistryEvent.LayerVisibilityChanged changed) {
+                if (changed.id().equals(CoreRegistry.WAYPOINT_LAYER_ID)) {
+                    assertTrue(changed.visible());
+                    visibilityFired.set(true);
+                }
+            }
+        });
+
+        registry.setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, true);
+        assertTrue(visibilityFired.get(), "LayerVisibilityChanged-Event für Waypoint-Layer wurde nicht gefeuert!");
+    }
 }

@@ -11,6 +11,8 @@ import javafx.fxml.FXML;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 
+import java.util.UUID;
+
 public class CanvasController {
 
     @FXML
@@ -115,10 +117,27 @@ public class CanvasController {
         return drawingPane;
     }
 
+    public UUID findConnectionAt(double sceneX, double sceneY) {
+        for (javafx.scene.Node node : drawingPane.getConnectionLayer().getChildren()) {
+            if (node instanceof javafx.scene.shape.Path path) {
+                if (path.isVisible() && path.contains(path.sceneToLocal(sceneX, sceneY))) {
+                    return (UUID) path.getProperties().get("UUID");
+                }
+            }
+        }
+        return null;
+    }
+
     public FmcObject findObjectAt(double x, double y) {
         // x und y sind hier bereits Weltkoordinaten
         return registry.getObjects().stream()
             .filter(obj -> {
+                // Check layer visibility
+                var layer = registry.getLayers().get(obj.layerId());
+                if (layer != null && !layer.visible()) {
+                    return false;
+                }
+
                 if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS || 
                     obj.type() == de.fmc.editor.core.model.FmcType.WEGPUNKT) {
                     

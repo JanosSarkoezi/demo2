@@ -16,6 +16,7 @@ import java.util.UUID;
 
 public class CoreRegistry {
     public static final UUID DEFAULT_LAYER_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+    public static final UUID WAYPOINT_LAYER_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
 
     private final Map<UUID, FmcObject> objects = new HashMap<>();
     private final Map<UUID, Connection> connections = new HashMap<>();
@@ -25,6 +26,8 @@ public class CoreRegistry {
     public CoreRegistry() {
         // Default Layer anlegen
         addLayer(new de.fmc.editor.core.model.Layer(DEFAULT_LAYER_ID, "Standard", true));
+        // Wegpunkt-Layer initial unsichtbar anlegen
+        addLayer(new de.fmc.editor.core.model.Layer(WAYPOINT_LAYER_ID, "Wegpunkte", false));
     }
 
     public void addListener(RegistryListener listener) {
@@ -88,6 +91,13 @@ public class CoreRegistry {
         if (source == null || target == null) return null;
         if (source.type() == target.type()) return null;
 
+        // Validierung: Keine doppelten Verbindungen (A -> B oder B -> A)
+        boolean connectionExists = connections.values().stream().anyMatch(c -> 
+            (c.sourceId().equals(sourceId) && c.targetId().equals(targetId)) ||
+            (c.sourceId().equals(targetId) && c.targetId().equals(sourceId))
+        );
+        if (connectionExists) return null;
+
         UUID connId = UUID.randomUUID();
         Connection connection = new Connection(sourceId, targetId, new ArrayList<>(waypointIds));
         connections.put(connId, connection);
@@ -99,6 +109,15 @@ public class CoreRegistry {
         if (connections.containsKey(id)) {
             connections.remove(id);
             fireEvent(new RegistryEvent.ConnectionRemoved(id));
+        }
+    }
+
+    public void updateConnectionWaypoints(UUID connectionId, List<UUID> waypointIds) {
+        Connection oldConn = connections.get(connectionId);
+        if (oldConn != null) {
+            Connection updatedConn = new Connection(oldConn.sourceId(), oldConn.targetId(), new ArrayList<>(waypointIds));
+            connections.put(connectionId, updatedConn);
+            fireEvent(new RegistryEvent.ConnectionUpdated(connectionId, updatedConn));
         }
     }
 

@@ -1,6 +1,8 @@
 package de.fmc.editor.state;
 
 import de.fmc.editor.controller.CanvasController;
+import de.fmc.editor.core.command.AddWaypointCommand;
+import de.fmc.editor.core.factory.FmcFactory;
 import de.fmc.editor.core.model.FmcObject;
 import java.util.UUID;
 
@@ -8,7 +10,7 @@ public class SelectOrMoveState implements EditorState {
     protected UUID draggedObjectId = null;
     protected double offsetX;
     protected double offsetY;
-    
+
     // Command-Tracking
     private double startX;
     private double startY;
@@ -28,6 +30,12 @@ public class SelectOrMoveState implements EditorState {
 
         if (hit != null) {
             isPanning = false;
+
+            // Wenn wir ein normales Objekt (kein Wegpunkt) anklicken, blenden wir die Wegpunkte aus
+            if (hit.type() != de.fmc.editor.core.model.FmcType.WEGPUNKT) {
+                context.getRegistry().setLayerVisibility(de.fmc.editor.core.CoreRegistry.WAYPOINT_LAYER_ID, false);
+            }
+
             if (event.clickCount() == 2) {
                 // Doppel-Klick wechselt in den Resize-Modus
                 ResizeState nextState = new ResizeState(hit.id());
@@ -38,7 +46,7 @@ public class SelectOrMoveState implements EditorState {
                 // Offset berechnen: Wo innerhalb des Objekts wurde geklickt?
                 offsetX = event.worldX() - hit.x();
                 offsetY = event.worldY() - hit.y();
-                
+
                 // Ursprung merken für Command
                 startX = hit.x();
                 startY = hit.y();
@@ -46,13 +54,46 @@ public class SelectOrMoveState implements EditorState {
                 lastKnownY = hit.y();
             }
         } else {
-            // Panning starten
-            draggedObjectId = null;
-            isPanning = true;
-            startMouseX = event.sceneX();
-            startMouseY = event.sceneY();
-            startTranslateX = context.getDrawingPane().getWorld().getTranslateX();
-            startTranslateY = context.getDrawingPane().getWorld().getTranslateY();
+            // Prüfen, ob eine Verbindung getroffen wurde
+            UUID clickedConnectionId = context.findConnectionAt(event.sceneX(), event.sceneY());
+
+            if (clickedConnectionId != null) {
+                isPanning = false;
+                draggedObjectId = null;
+
+                if (event.clickCount() == 2) {
+                    // DOPPELKLICK -> Neuen Wegpunkt hinzufügen
+                    System.out.println("Doppelklick auf Verbindung -> Erzeuge neuen Wegpunkt.");
+
+                    var waypoint = FmcFactory.createObject(
+                        de.fmc.editor.core.model.FmcType.WEGPUNKT,
+                        event.worldX(), event.worldY(),
+                        de.fmc.editor.core.CoreRegistry.WAYPOINT_LAYER_ID
+                    );
+
+                    var cmd = new AddWaypointCommand(
+                        context.getRegistry(), clickedConnectionId, waypoint
+                    );
+                    context.getCommandHistory().executeCommand(cmd);
+
+                    // Layer sicherheitshalber sichtbar schalten
+                    context.getRegistry().setLayerVisibility(de.fmc.editor.core.CoreRegistry.WAYPOINT_LAYER_ID, true);
+
+                } else {
+                    // Einfacher Klick -> Wegpunkte einblenden
+                    context.getRegistry().setLayerVisibility(de.fmc.editor.core.CoreRegistry.WAYPOINT_LAYER_ID, true);
+                }
+            } else {
+                // Panning starten oder ins Leere klicken -> Wegpunkte ausblenden
+                context.getRegistry().setLayerVisibility(de.fmc.editor.core.CoreRegistry.WAYPOINT_LAYER_ID, false);
+
+                draggedObjectId = null;
+                isPanning = true;
+                startMouseX = event.sceneX();
+                startMouseY = event.sceneY();
+                startTranslateX = context.getDrawingPane().getWorld().getTranslateX();
+                startTranslateY = context.getDrawingPane().getWorld().getTranslateY();
+            }
         }
     }
 
@@ -81,7 +122,7 @@ public class SelectOrMoveState implements EditorState {
             // Panning ausführen
             double deltaX = event.sceneX() - startMouseX;
             double deltaY = event.sceneY() - startMouseY;
-            
+
             context.getDrawingPane().getWorld().setTranslateX(startTranslateX + deltaX);
             context.getDrawingPane().getWorld().setTranslateY(startTranslateY + deltaY);
         }

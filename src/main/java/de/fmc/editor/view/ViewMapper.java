@@ -71,6 +71,7 @@ public class ViewMapper implements RegistryListener {
             case RegistryEvent.ObjectResized(var id, var w, var h) -> handleObjectResized(id, w, h);
             case RegistryEvent.ConnectionAdded(var id, var conn) -> handleConnectionAdded(id, conn);
             case RegistryEvent.ConnectionRemoved(var id) -> handleConnectionRemoved(id);
+            case RegistryEvent.ConnectionUpdated(var id, var conn) -> handleConnectionUpdated(id, conn);
             case RegistryEvent.LayerAdded(var layer) -> {} 
             case RegistryEvent.LayerRemoved(var id) -> {}
             case RegistryEvent.LayerVisibilityChanged(var id, var visible) -> handleLayerVisibilityChanged(id, visible);
@@ -192,6 +193,10 @@ public class ViewMapper implements RegistryListener {
         }
     }
 
+    private void handleConnectionUpdated(UUID id, de.fmc.editor.core.model.Connection conn) {
+        refreshConnection(id);
+    }
+
     private void handleLayerVisibilityChanged(UUID layerId, boolean visible) {
         registry.getObjects().stream()
             .filter(obj -> obj.layerId().equals(layerId))
@@ -244,8 +249,10 @@ public class ViewMapper implements RegistryListener {
 
         Path newPath = routingStrategy.calculatePath(source, target, waypoints);
         newPath.setStroke(javafx.scene.paint.Color.DARKGRAY);
-        newPath.setStrokeWidth(2.0);
-        newPath.setMouseTransparent(true);
+        newPath.setStrokeWidth(4.0);
+        newPath.setMouseTransparent(false);
+        newPath.getProperties().put("UUID", connId);
+        newPath.getProperties().put("TYPE", "CONNECTION");
         
         visualConnections.put(connId, newPath);
         graphView.getConnectionLayer().getChildren().add(newPath);
