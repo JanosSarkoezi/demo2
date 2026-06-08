@@ -1,6 +1,7 @@
 package de.fmc.editor.state;
 
 import de.fmc.editor.controller.CanvasController;
+import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.command.CreateObjectCommand;
 import de.fmc.editor.core.factory.FmcFactory;
 import de.fmc.editor.core.model.FmcType;
@@ -29,7 +30,7 @@ public class CreateState extends SelectOrMoveState {
                     createY = Math.round(createY / gridSize) * gridSize;
                 }
 
-                UUID layerId = UUID.randomUUID(); 
+                UUID layerId = CoreRegistry.DEFAULT_LAYER_ID; 
                 var obj = FmcFactory.createObject(selectedType, createX, createY, layerId);
                 
                 // Über CommandHistory ausführen statt direkt adden

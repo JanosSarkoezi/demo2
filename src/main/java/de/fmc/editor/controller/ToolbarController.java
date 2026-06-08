@@ -1,6 +1,7 @@
 package de.fmc.editor.controller;
 
 import de.fmc.editor.core.model.FmcType;
+import de.fmc.editor.state.CreateConnectionState;
 import de.fmc.editor.state.CreateState;
 import de.fmc.editor.state.SelectOrMoveState;
 import javafx.event.ActionEvent;
@@ -68,7 +69,11 @@ public class ToolbarController {
 
     @FXML
     public void onConnClick(ActionEvent event) {
-        // Handle connection tool selection
+        if (connectButton.isSelected()) {
+            canvasController.setCurrentState(new CreateConnectionState());
+        } else {
+            canvasController.setCurrentState(new SelectOrMoveState());
+        }
     }
 
     @FXML

@@ -15,9 +15,17 @@ import java.util.Map;
 import java.util.UUID;
 
 public class CoreRegistry {
+    public static final UUID DEFAULT_LAYER_ID = UUID.fromString("00000000-0000-0000-0000-000000000000");
+
     private final Map<UUID, FmcObject> objects = new HashMap<>();
     private final Map<UUID, Connection> connections = new HashMap<>();
+    private final Map<UUID, de.fmc.editor.core.model.Layer> layers = new HashMap<>();
     private final List<RegistryListener> listeners = new ArrayList<>();
+
+    public CoreRegistry() {
+        // Default Layer anlegen
+        addLayer(new de.fmc.editor.core.model.Layer(DEFAULT_LAYER_ID, "Standard", true));
+    }
 
     public void addListener(RegistryListener listener) {
         this.listeners.add(listener);
@@ -60,23 +68,62 @@ public class CoreRegistry {
     public void removeObject(UUID id) {
         if (objects.containsKey(id)) {
             objects.remove(id);
+            // Auch Verbindungen entfernen, die dieses Objekt nutzen (Source, Target oder Waypoint)
+            List<UUID> toRemove = connections.entrySet().stream()
+                    .filter(e -> e.getValue().sourceId().equals(id) || 
+                                 e.getValue().targetId().equals(id) ||
+                                 e.getValue().waypointIds().contains(id))
+                    .map(Map.Entry::getKey)
+                    .toList();
+            toRemove.forEach(this::removeConnection);
+
             fireEvent(new RegistryEvent.ObjectRemoved(id));
         }
     }
 
-    public boolean addConnection(UUID sourceId, UUID targetId) {
+    public UUID addConnection(UUID sourceId, UUID targetId, List<UUID> waypointIds) {
         FmcObject source = objects.get(sourceId);
         FmcObject target = objects.get(targetId);
 
-        if (source == null || target == null) return false;
-        if (source.type() == target.type()) return false;
+        if (source == null || target == null) return null;
+        if (source.type() == target.type()) return null;
 
-        Connection connection = new Connection(sourceId, targetId);
-        connections.put(UUID.randomUUID(), connection);
-        return true;
+        UUID connId = UUID.randomUUID();
+        Connection connection = new Connection(sourceId, targetId, new ArrayList<>(waypointIds));
+        connections.put(connId, connection);
+        fireEvent(new RegistryEvent.ConnectionAdded(connId, connection));
+        return connId;
+    }
+
+    public void removeConnection(UUID id) {
+        if (connections.containsKey(id)) {
+            connections.remove(id);
+            fireEvent(new RegistryEvent.ConnectionRemoved(id));
+        }
+    }
+
+    public void addLayer(de.fmc.editor.core.model.Layer layer) {
+        layers.put(layer.id(), layer);
+        fireEvent(new RegistryEvent.LayerAdded(layer));
+    }
+
+    public void setLayerVisibility(UUID id, boolean visible) {
+        de.fmc.editor.core.model.Layer layer = layers.get(id);
+        if (layer != null && layer.visible() != visible) {
+            layers.put(id, new de.fmc.editor.core.model.Layer(id, layer.name(), visible));
+            fireEvent(new RegistryEvent.LayerVisibilityChanged(id, visible));
+        }
     }
 
     public Collection<FmcObject> getObjects() {
         return Collections.unmodifiableCollection(objects.values());
+    }
+
+    public Map<UUID, Connection> getConnections() {
+        return Collections.unmodifiableMap(connections);
+    }
+
+    public Map<UUID, de.fmc.editor.core.model.Layer> getLayers() {
+        return Collections.unmodifiableMap(layers);
     }
 }

@@ -36,6 +36,13 @@ public class MainController {
         registry.addListener(viewMapper);
         
         canvasController.setViewMapper(viewMapper);
+
+        // --- Demo-Daten für Etappe 4 ---
+        var k1 = de.fmc.editor.core.factory.FmcFactory.createObject(de.fmc.editor.core.model.FmcType.KREIS, 200, 200, CoreRegistry.DEFAULT_LAYER_ID);
+        var q1 = de.fmc.editor.core.factory.FmcFactory.createObject(de.fmc.editor.core.model.FmcType.QUADRAT, 400, 200, CoreRegistry.DEFAULT_LAYER_ID);
+        registry.addObject(k1);
+        registry.addObject(q1);
+        registry.addConnection(k1.id(), q1.id(), java.util.Collections.emptyList());
     }
 
     public void setupShortcuts(javafx.scene.Scene scene) {
@@ -43,10 +50,8 @@ public class MainController {
             if (event.isControlDown()) {
                 if (event.getCode() == javafx.scene.input.KeyCode.Z) {
                     if (event.isShiftDown()) {
-                        System.out.println("Redo triggered");
                         canvasController.getCommandHistory().redo();
                     } else {
-                        System.out.println("Undo triggered");
                         canvasController.getCommandHistory().undo();
                     }
                     event.consume();

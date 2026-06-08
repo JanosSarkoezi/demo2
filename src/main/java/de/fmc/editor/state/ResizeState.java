@@ -98,10 +98,13 @@ public class ResizeState implements EditorState {
 
         // Für Kreise: Gleichmäßiges Skalieren erzwingen
         if (obj.type() == FmcType.KREIS) {
-            if (activeHandle == HandleType.N || activeHandle == HandleType.S) {
-                newW = newH;
-            } else {
+            double absDeltaX = Math.abs(deltaX);
+            double absDeltaY = Math.abs(deltaY);
+            
+            if (absDeltaX > absDeltaY) {
                 newH = newW;
+            } else {
+                newW = newH;
             }
         }
 
@@ -118,12 +121,6 @@ public class ResizeState implements EditorState {
         context.getRegistry().resizeObject(targetObjectId, newW, newH);
         lastKnownW = newW;
         lastKnownH = newH;
-        
-        // Handles nach dem Resize neu zeichnen
-        if (context.getViewMapper() != null) {
-            FmcObject updated = getTargetObject(context);
-            context.getViewMapper().setSelectedObject(targetObjectId, ViewMapper.getHandles(updated));
-        }
         
         lastMouseX = event.worldX();
         lastMouseY = event.worldY();

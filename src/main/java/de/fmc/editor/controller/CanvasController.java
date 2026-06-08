@@ -44,7 +44,13 @@ public class CanvasController {
     }
 
     public void setCurrentState(EditorState state) {
+        if (this.currentState != null) {
+            this.currentState.exitState(this);
+        }
         this.currentState = state;
+        if (this.currentState != null) {
+            this.currentState.enterState(this);
+        }
         
         // Wenn wir den ResizeState verlassen, Handles löschen
         if (viewMapper != null && !(state instanceof de.fmc.editor.state.ResizeState)) {
@@ -113,8 +119,11 @@ public class CanvasController {
         // x und y sind hier bereits Weltkoordinaten
         return registry.getObjects().stream()
             .filter(obj -> {
-                if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS) {
-                    double radius = obj.width() / 2;
+                if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS || 
+                    obj.type() == de.fmc.editor.core.model.FmcType.WEGPUNKT) {
+                    
+                    // Für Wegpunkte geben wir eine etwas größere Klick-Zone (10px statt 5px)
+                    double radius = (obj.type() == de.fmc.editor.core.model.FmcType.WEGPUNKT) ? 12.0 : (obj.width() / 2);
                     double dx = obj.x() - x;
                     double dy = obj.y() - y;
                     return (dx * dx + dy * dy) <= (radius * radius);
