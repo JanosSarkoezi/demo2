@@ -78,7 +78,19 @@ public class CoreRegistry {
                                  e.getValue().targetId().equals(id))
                     .map(Map.Entry::getKey)
                     .toList();
-            toRemove.forEach(this::removeConnection);
+            
+            // Bevor wir die Verbindung löschen, müssen wir ihre Wegpunkte aus dem System werfen!
+            toRemove.forEach(connId -> {
+                Connection conn = connections.get(connId);
+                if (conn != null) {
+                    for (UUID wpId : conn.waypointIds()) {
+                        if (objects.remove(wpId) != null) {
+                            fireEvent(new RegistryEvent.ObjectRemoved(wpId));
+                        }
+                    }
+                }
+                removeConnection(connId);
+            });
 
             // 2. Verbindungen finden, die dieses Objekt als Wegpunkt nutzen -> Update (entfernen aus Liste)
             connections.forEach((connId, conn) -> {
@@ -150,6 +162,10 @@ public class CoreRegistry {
 
     public Collection<FmcObject> getObjects() {
         return Collections.unmodifiableCollection(objects.values());
+    }
+
+    public FmcObject getObject(UUID id) {
+        return objects.get(id);
     }
 
     public Map<UUID, Connection> getConnections() {

@@ -27,4 +27,9 @@ public class MoveObjectCommand implements Command {
     public void undo() {
         registry.moveObject(objectId, oldX, oldY);
     }
+
+    @Override
+    public void redo() {
+        execute();
+    }
 }

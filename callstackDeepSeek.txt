@@ -1,0 +1,175 @@
+## Vorgang: Verbindung mit 4 Wegpunkten, dann Löschen des 2. Wegpunkts
+
+### 1. Ausgangszustand
+
+- Ein Kreis (Typ `KREIS`) und ein Quadrat (Typ `QUADRAT`) existieren im `CoreRegistry`.
+- Der Benutzer aktiviert den **Connect-Modus** (Toolbar) → `CreateConnectionState` wird aktiv.
+- Der Benutzer klickt:
+  1. Auf den Kreis → `sourceObjectId` = Kreis-ID.
+  2. An vier leere Stellen → jeder Klick erzeugt einen **Wegpunkt** (`FmcType.WEGPUNKT`) per `CreateObjectCommand`. Die IDs werden in `collectedWaypointIds` gespeichert.
+  3. Auf das Quadrat → `CreateConnectionCommand` wird mit `sourceId`, `targetId` und den 4 Wegpunkt-IDs erstellt und ausgeführt.
+- Die `CoreRegistry` enthält nun:
+  - Die 4 Wegpunkt-Objekte.
+  - Eine `Connection` mit `waypointIds = [ID1, ID2, ID3, ID4]` (Reihenfolge der Klicks).
+- `ViewMapper` zeigt die Verbindung als Linie (z. B. `StraightLineRouting`) über alle 4 Wegpunkte.
+
+### 2. Löschen des zweiten Wegpunkts (ID2)
+
+#### Benutzeraktionen
+1. **Einfacher Klick** auf den zweiten Wegpunkt (ID2) → Selektion.
+2. **Drücken der `DELETE`-Taste** (oder `BACK_SPACE`).
+
+#### Detaillierte Callhierarchie (vereinfacht)
+
+```text
+DELETE-Taste
+ └─ MainController.deleteSelected()
+     ├─ canvasController.getSelectedObjectIds()  → liefert Set {ID2}
+     ├─ new DeleteSelectedCommand(registry, [ID2])
+     │    └─ Konstruktor: für jede ID → prüft Typ (WEGPUNKT)
+     │         └─ new DeleteWaypointCommand(registry, ID2)
+     └─ commandHistory.executeCommand(cmd)
+          ├─ cmd.execute()  → DeleteSelectedCommand.execute()
+          │    └─ for each subCommand: subCmd.execute()
+          │         └─ DeleteWaypointCommand.execute()
+          │              ├─ deletedWaypoint = registry.getObject(ID2)
+          │              ├─ connectionBackups sichern (alle Connections, die ID2 enthalten)
+          │              └─ registry.removeObject(ID2)
+          │                   ├─ objects.remove(ID2)
+          │                   ├─ für jede Connection mit waypointIds.contains(ID2):
+          │                   │    └─ updateConnectionWaypoints(connId, neueListeOhneID2)
+          │                   │         ├─ neue Connection erzeugen, in Map speichern
+          │                   │         └─ fireEvent(new ConnectionUpdated(...))
+          │                   └─ fireEvent(new ObjectRemoved(ID2))
+          ├─ addExecutedCommand(cmd) → undoStack.push(cmd), redoStack.clear()
+          └─ return
+
+Asynchrone Event-Verarbeitung (im selben Thread):
+  ViewMapper.handleEvent(RegistryEvent)
+   ├─ Fall ObjectRemoved(id=ID2)
+   │    └─ handleObjectRemoved(ID2)
+   │         ├─ Shape aus visualNodes.remove(ID2)
+   │         └─ graphView.getShapeLayer().getChildren().remove(shape)
+   └─ Fall ConnectionUpdated(id, conn)
+        └─ handleConnectionUpdated(id, conn)
+             └─ refreshConnection(id)
+                  ├─ alte Path aus visualConnections entfernen
+                  ├─ neue Path berechnen (routingStrategy.calculatePath)
+                  │   – jetzt ohne ID2 in der Wegpunktliste
+                  ├─ visualConnections.put(id, newPath)
+                  └─ graphView.getConnectionLayer().getChildren().add(newPath)
+```
+
+#### Ergebnis nach dem Löschen
+
+- Der gelbe Wegpunkt (ID2) verschwindet von der Zeichenfläche.
+- Die Verbindungslinie wird **neu gezeichnet** und verläuft nun direkt vom ersten Wegpunkt (ID1) zum dritten Wegpunkt (ID3) (die anderen Wegpunkte bleiben erhalten).
+- Die `Connection` in der `CoreRegistry` enthält jetzt `waypointIds = [ID1, ID3, ID4]`.
+- Der Löschvorgang ist als `DeleteSelectedCommand` (bzw. `DeleteWaypointCommand`) im Undo-Stack gespeichert.
+
+### 3. Undo des Löschens (Strg+Z)
+
+Falls der Benutzer rückgängig machen möchte:
+
+```text
+Strg+Z
+ └─ CommandHistory.undo()
+      ├─ cmd = undoStack.pop()  → DeleteSelectedCommand
+      ├─ cmd.undo()
+      │    └─ for i = subCommands.size-1 downto 0
+      │         └─ subCommands.get(i).undo()
+      │              └─ DeleteWaypointCommand.undo()
+      │                   ├─ registry.addObject(deletedWaypoint)
+      │                   └─ für jede betroffene Connection:
+      │                        registry.updateConnectionWaypoints(connId, previousWaypointIds)
+      │                             → ConnectionUpdated-Event
+      └─ redoStack.push(cmd)
+```
+
+→ Der Wegpunkt und die ursprüngliche Verbindung mit 4 Wegpunkten werden wiederhergestellt.
+
+### 4. Besonderheiten & Design-Entscheidungen
+
+- **Wegpunkt-Layer**: Wegpunkte gehören zu `WAYPOINT_LAYER_ID`. Normalerweise ist dieser Layer **unsichtbar** (ausser im Connect-Modus oder wenn der Haken in der Toolbar gesetzt ist). Beim Löschen wird die Sichtbarkeit nicht beeinflusst.
+- **Kaskaden-Regeln**: Das Löschen eines Wegpunkts löscht **nicht** die gesamte Verbindung – nur die Referenz in der Wegpunktliste wird entfernt.
+- **Selektion**: Der Wegpunkt muss vor dem Löschen selektiert sein. Ein einfacher Klick selektiert ihn (ohne zu ziehen) und bleibt im `IdleState` (da `DragObjectsState` bei `mouseReleased` ohne Bewegung wieder zurückwechselt).
+- **Command-Stack**: `DeleteWaypointCommand` sichert alle nötigen Daten (`deletedWaypoint`, `connectionBackups`) beim ersten `execute()`, damit Undo/Redo korrekt funktioniert.
+- **Event-getrieben**: Die UI (`ViewMapper`) reagiert rein auf Events aus der Registry – keine direkte Manipulation der visuellen Nodes ausserhalb der Event-Handler.
+
+Diese Architektur gewährleistet eine strikte Trennung zwischen Geschäftslogik (Core) und Darstellung (JavaFX) sowie vollständiges Undo/Redo für alle Operationen.
+
+
+## Callhierarchie für das Undo des Löschens (Strg+Z)
+
+Nachdem der zweite Wegpunkt (ID2) gelöscht wurde (wie im vorherigen Szenario), drückt der Benutzer **Strg+Z**. Die folgende Aufrufreihenfolge beschreibt den genauen Ablauf.
+
+### Voraussetzung
+- Der Undo-Stack enthält oben das `DeleteSelectedCommand`, welches ein `DeleteWaypointCommand` für ID2 als Subcommand enthält.
+- Der Redo-Stack ist leer.
+- Die Registry enthält aktuell **keinen** Wegpunkt mit ID2, und die Verbindungslinie verläuft ohne diesen Punkt.
+
+### Callhierarchie – Undo
+
+```text
+Strg+Z (KeyPressed)
+ └─ MainController.setupShortcuts() → scene.setOnKeyPressed()
+      └─ canvasController.getCommandHistory().undo()
+           └─ CommandHistory.undo()
+                ├─ if (!undoStack.isEmpty())
+                │    └─ Command cmd = undoStack.pop()   // cmd = DeleteSelectedCommand (enthält DeleteWaypointCommand)
+                ├─ cmd.undo()
+                │    └─ DeleteSelectedCommand.undo()
+                │         └─ for (int i = subCommands.size() - 1; i >= 0; i--)
+                │              └─ subCommands.get(i).undo()   // i = 0: DeleteWaypointCommand
+                │                   └─ DeleteWaypointCommand.undo()
+                │                        ├─ if (deletedWaypoint != null)
+                │                        │    ├─ registry.addObject(deletedWaypoint)   // Wegpunkt ID2 wieder einfügen
+                │                        │    │    ├─ objects.put(ID2, waypoint)
+                │                        │    │    └─ fireEvent(new ObjectAdded(waypoint))
+                │                        │    └─ connectionBackups.forEach((connId, oldWaypointIds) -> {
+                │                        │         registry.updateConnectionWaypoints(connId, oldWaypointIds)
+                │                        │    })
+                │                        │         └─ Connection updated = new Connection(oldSource, oldTarget, oldWaypointIds)
+                │                        │              connections.put(connId, updated)
+                │                        │              fireEvent(new ConnectionUpdated(connId, updated))
+                │                        └─ return
+                ├─ redoStack.push(cmd)
+                └─ return
+
+Asynchrone Event-Verarbeitung (durch die gefeuerten Events):
+  ViewMapper.handleEvent(RegistryEvent)
+   ├─ Fall ObjectAdded(object=Wegpunkt ID2)
+   │    └─ handleObjectAdded(obj)
+   │         ├─ Shape shape = new Circle(...) (gelb)
+   │         ├─ visualNodes.put(ID2, shape)
+   │         ├─ graphView.getShapeLayer().getChildren().add(shape)
+   │         └─ updateConnectionsForObject(ID2) → führt zu ConnectionUpdated für die betroffene Verbindung
+   └─ Fall ConnectionUpdated(id, conn)
+        └─ handleConnectionUpdated(id, conn)
+             └─ refreshConnection(id)
+                  ├─ alte Path aus visualConnections entfernen
+                  ├─ neue Path berechnen (jetzt wieder mit allen 4 Wegpunkten)
+                  ├─ visualConnections.put(id, newPath)
+                  └─ graphView.getConnectionLayer().getChildren().add(newPath)
+```
+
+### Erläuterung der wichtigsten Schritte
+
+1. **CommandHistory.undo()** holt das oberste Kommando vom Undo-Stack – das ist das `DeleteSelectedCommand`, das beim Löschen erzeugt wurde.
+2. **DeleteSelectedCommand.undo()** iteriert über seine Subcommands **in umgekehrter Reihenfolge** (wichtig für Korrektheit) und ruft deren `undo()` auf.
+3. **DeleteWaypointCommand.undo()** führt zwei wesentliche Aktionen aus:
+   - `registry.addObject(deletedWaypoint)` stellt den gelöschten Wegpunkt wieder her.
+   - `registry.updateConnectionWaypoints(...)` setzt für jede betroffene Verbindung die ursprüngliche Wegpunktliste (inkl. ID2) zurück.
+4. **Events** benachrichtigen den `ViewMapper`, der daraufhin:
+   - Den gelben Wegpunkt erneut auf der Zeichenfläche anzeigt.
+   - Die Verbindungslinie neu berechnet – jetzt wieder über alle 4 Wegpunkte.
+5. Das Command wird auf den **Redo-Stack** geschoben, damit ein erneutes Redo (Strg+Y / Strg+Shift+Z) möglich ist.
+
+### Besonderheiten
+
+- Die **umgekehrte Iteration** in `DeleteSelectedCommand.undo()` ist notwendig, weil die Subcommands in der ursprünglichen Ausführungsreihenfolge vorliegen. Für das Undo muss in umgekehrter Reihenfolge rückgängig gemacht werden (z. B. zuletzt gelöschter Wegpunkt zuerst wiederherstellen). In diesem Fall gibt es nur einen Subcommand, daher kein Unterschied.
+- Der Wegpunkt erscheint nach dem Undo exakt an seiner ursprünglichen Position (gespeichert in `deletedWaypoint`).
+- Die Verbindungslinie wird korrekt aktualisiert, da `updateConnectionWaypoints` ein `ConnectionUpdated`-Event auslöst, das den `ViewMapper` zum Neuzeichnen zwingt.
+- Das Undo ist vollständig und kann selbst durch ein Redo rückgängig gemacht werden.
+
+Damit ist der gelöschte zweite Wegpunkt wiederhergestellt und die Verbindung zeigt wieder die ursprüngliche Linienführung über vier Wegpunkte.

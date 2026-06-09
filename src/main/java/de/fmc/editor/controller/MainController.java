@@ -54,7 +54,13 @@ public class MainController {
                     } else {
                         canvasController.getCommandHistory().undo();
                     }
-                    event.consume();
+
+//                    StackWalker.getInstance().walk(frames -> frames
+//                            .filter(f -> f.getClassName().startsWith("de.fmc"))
+//                            .limit(10)
+//                            .peek(f -> System.out.println("   -> Verursacht durch: " + f.getMethodName() + " in " + f.getClassName()))
+//                            .toList());
+//                    event.consume();
                 }
             } else if (event.getCode() == javafx.scene.input.KeyCode.DELETE || 
                        event.getCode() == javafx.scene.input.KeyCode.BACK_SPACE) {

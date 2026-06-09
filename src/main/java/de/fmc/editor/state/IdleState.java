@@ -6,7 +6,10 @@ import de.fmc.editor.core.command.AddWaypointCommand;
 import de.fmc.editor.core.factory.FmcFactory;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
+import de.fmc.editor.core.util.GeometryUtils;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public class IdleState implements EditorState {
@@ -46,7 +49,7 @@ public class IdleState implements EditorState {
                     selectedIds.add(hit.id());
                 }
             }
-            
+
             // UI updaten (Schatten/Blur zeichnen)
             context.updateSelectionInView();
 
@@ -70,10 +73,29 @@ public class IdleState implements EditorState {
                         CoreRegistry.WAYPOINT_LAYER_ID
                     );
 
+                    var conn = context.getRegistry().getConnections().get(clickedConnectionId);
+                    int index = 0;
+                    if (conn != null) {
+                        var source = context.getRegistry().getObject(conn.sourceId());
+                        var target = context.getRegistry().getObject(conn.targetId());
+                        List<FmcObject> currentWps = new ArrayList<>();
+                        for (UUID id : conn.waypointIds()) {
+                            FmcObject wp = context.getRegistry().getObject(id);
+                            if (wp != null) currentWps.add(wp);
+                        }
+
+                        index = GeometryUtils.calculateInsertionIndex(event.worldX(), event.worldY(), source, target, currentWps);
+                    }
+
                     var cmd = new AddWaypointCommand(
-                        context.getRegistry(), clickedConnectionId, waypoint
+                        context.getRegistry(), clickedConnectionId, waypoint, index
                     );
                     context.getCommandHistory().executeCommand(cmd);
+
+                    // Neu erzeugten Wegpunkt sofort selektieren
+                    selectedIds.clear();
+                    selectedIds.add(waypoint.id());
+                    context.updateSelectionInView();
 
                     // Layer sicherheitshalber sichtbar schalten
                     context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, true);
@@ -90,7 +112,7 @@ public class IdleState implements EditorState {
                     // Alles abwählen und Panning starten
                     selectedIds.clear();
                     context.updateSelectionInView();
-                    
+
                     if (!context.getToolbarController().isWaypointsVisible()) {
                         context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false);
                     }

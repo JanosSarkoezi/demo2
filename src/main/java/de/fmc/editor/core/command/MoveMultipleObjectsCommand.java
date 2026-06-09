@@ -26,4 +26,9 @@ public class MoveMultipleObjectsCommand implements Command {
     public void undo() {
         oldPositions.forEach((id, pos) -> registry.moveObject(id, pos.x(), pos.y()));
     }
+
+    @Override
+    public void redo() {
+        execute();
+    }
 }

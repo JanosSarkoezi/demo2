@@ -27,4 +27,9 @@ public class ResizeObjectCommand implements Command {
     public void undo() {
         registry.resizeObject(objectId, oldW, oldH);
     }
+
+    @Override
+    public void redo() {
+        execute();
+    }
 }

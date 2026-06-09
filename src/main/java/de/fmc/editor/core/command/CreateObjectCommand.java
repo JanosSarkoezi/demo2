@@ -21,4 +21,9 @@ public class CreateObjectCommand implements Command {
     public void undo() {
         registry.removeObject(objectToCreate.id());
     }
+
+    @Override
+    public void redo() {
+        execute();
+    }
 }

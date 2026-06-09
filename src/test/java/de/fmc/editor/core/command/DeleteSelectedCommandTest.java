@@ -41,11 +41,11 @@ public class DeleteSelectedCommandTest {
         DeleteSelectedCommand cmd = new DeleteSelectedCommand(registry, List.of(source.id()));
         cmd.execute();
         
-        assertEquals(2, registry.getObjects().size(), "Source should be gone, target and waypoint remain");
+        assertEquals(1, registry.getObjects().size(), "Only target remains; source and cascading waypoint should be gone");
         assertEquals(0, registry.getConnections().size(), "Connection should be deleted kaskadierend");
         
         cmd.undo();
-        assertEquals(3, registry.getObjects().size(), "Source should be back");
+        assertEquals(3, registry.getObjects().size(), "All objects (source, target, waypoint) should be back");
         assertEquals(1, registry.getConnections().size(), "Connection should be back");
     }
 
@@ -54,16 +54,16 @@ public class DeleteSelectedCommandTest {
         DeleteSelectedCommand cmd = new DeleteSelectedCommand(registry, List.of(waypoint.id()));
         cmd.execute();
         
-        assertEquals(2, registry.getObjects().size(), "Waypoint should be gone");
+        assertEquals(2, registry.getObjects().size(), "Waypoint should be gone, source and target remain");
         assertEquals(1, registry.getConnections().size(), "Connection should still exist");
         
         Connection conn = registry.getConnections().get(connId);
-        assertTrue(conn.waypointIds().isEmpty(), "Waypoint should be removed from connection");
+        assertTrue(conn.waypointIds().isEmpty(), "Waypoint should be removed from connection list");
         
         cmd.undo();
         assertEquals(3, registry.getObjects().size(), "Waypoint should be back");
         conn = registry.getConnections().get(connId);
-        assertEquals(1, conn.waypointIds().size(), "Waypoint should be back in connection");
+        assertEquals(1, conn.waypointIds().size(), "Waypoint should be back in connection list");
     }
 
     @Test
@@ -71,7 +71,7 @@ public class DeleteSelectedCommandTest {
         DeleteSelectedCommand cmd = new DeleteSelectedCommand(registry, List.of(source.id(), target.id()));
         cmd.execute();
         
-        assertEquals(1, registry.getObjects().size(), "Only waypoint remains");
+        assertEquals(0, registry.getObjects().size(), "Source, target, and cascading waypoint should all be gone");
         assertEquals(0, registry.getConnections().size(), "Connection gone");
         
         cmd.undo();

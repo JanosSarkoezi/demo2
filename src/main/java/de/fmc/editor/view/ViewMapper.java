@@ -1,5 +1,7 @@
 package de.fmc.editor.view;
 
+import com.google.gson.Gson;
+import com.google.gson.GsonBuilder;
 import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.event.RegistryEvent;
 import de.fmc.editor.core.event.RegistryListener;
@@ -128,6 +130,10 @@ public class ViewMapper implements RegistryListener {
                     .ifPresent(obj -> refreshHandles(getHandles(obj)));
             }
         }
+
+        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+        System.out.println(event.getClass().getSimpleName() + ": " + gson.toJson(event));
+//        System.out.println(gson.toJson(registry.getConnections()));
     }
 
     // Hilfsmethode um Handles anzuzeigen (wird von außen gesteuert)
@@ -153,6 +159,14 @@ public class ViewMapper implements RegistryListener {
     }
 
     private void handleObjectAdded(de.fmc.editor.core.model.FmcObject obj) {
+        // SICHERHEITS-CHECK: Falls aus irgendeinem Grund schon ein Shape mit dieser ID existiert,
+        // entfernen wir es erst von der Zeichenfläche, bevor es in der Map überschrieben wird.
+        // Das verhindert "Geister-Objekte" bei sehr schnellen Undo/Redo-Zyklen.
+        Shape existingShape = visualNodes.get(obj.id());
+        if (existingShape != null) {
+            graphView.getShapeLayer().getChildren().remove(existingShape);
+        }
+
         Shape shape = switch (obj.type()) {
             case KREIS -> new Circle(obj.x(), obj.y(), obj.width() / 2);
             case QUADRAT -> new Rectangle(obj.x() - (obj.width() / 2), obj.y() - (obj.height() / 2), obj.width(), obj.height());
@@ -183,6 +197,9 @@ public class ViewMapper implements RegistryListener {
 
         visualNodes.put(obj.id(), shape);
         graphView.getShapeLayer().getChildren().add(shape);
+
+        // Verbindungen aktualisieren, falls dieses Objekt Teil einer Linie ist
+        updateConnectionsForObject(obj.id());
     }
 
     private void handleObjectMoved(UUID id, double x, double y) {
@@ -220,6 +237,9 @@ public class ViewMapper implements RegistryListener {
         if (shape != null) {
             graphView.getShapeLayer().getChildren().remove(shape);
         }
+
+        // Verbindungen aktualisieren, falls dieses Objekt Teil einer Linie war
+        updateConnectionsForObject(id);
     }
 
     private void handleConnectionAdded(UUID id, de.fmc.editor.core.model.Connection conn) {

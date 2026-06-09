@@ -11,27 +11,36 @@ public class AddWaypointCommand implements Command {
     private final CoreRegistry registry;
     private final UUID connectionId;
     private final FmcObject waypoint;
+    private final int index;
     private List<UUID> previousWaypointIds;
 
-    public AddWaypointCommand(CoreRegistry registry, UUID connectionId, FmcObject waypoint) {
+    public AddWaypointCommand(CoreRegistry registry, UUID connectionId, FmcObject waypoint, int index) {
         this.registry = registry;
         this.connectionId = connectionId;
         this.waypoint = waypoint;
+        this.index = index;
     }
 
     @Override
     public void execute() {
         Connection conn = registry.getConnections().get(connectionId);
+
         if (conn != null) {
             // 1. Wegpunkt zur Registry hinzufügen (damit er im ViewMapper erscheint)
             registry.addObject(waypoint);
             
-            // 2. Alten Zustand sichern
-            this.previousWaypointIds = new ArrayList<>(conn.waypointIds());
+            // 2. Alten Zustand NUR beim ersten Mal sichern
+            if (previousWaypointIds == null) {
+                this.previousWaypointIds = new ArrayList<>(conn.waypointIds());
+            }
             
-            // 3. Neuen Wegpunkt zur Liste hinzufügen
+            // 3. Neuen Wegpunkt an der gewünschten Stelle einfügen
             List<UUID> updatedList = new ArrayList<>(previousWaypointIds);
-            updatedList.add(waypoint.id());
+            if (index >= 0 && index <= updatedList.size()) {
+                updatedList.add(index, waypoint.id());
+            } else {
+                updatedList.add(waypoint.id());
+            }
             
             registry.updateConnectionWaypoints(connectionId, updatedList);
         }
@@ -46,5 +55,10 @@ public class AddWaypointCommand implements Command {
             // 2. Wegpunkt aus der Registry entfernen
             registry.removeObject(waypoint.id());
         }
+    }
+
+    @Override
+    public void redo() {
+        execute();
     }
 }
