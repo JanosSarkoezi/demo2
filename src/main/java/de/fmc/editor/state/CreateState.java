@@ -7,7 +7,7 @@ import de.fmc.editor.core.factory.FmcFactory;
 import de.fmc.editor.core.model.FmcType;
 import java.util.UUID;
 
-public class CreateState extends SelectOrMoveState {
+public class CreateState extends IdleState {
 
     @Override
     public void handleMousePressed(MouseEventData event, CanvasController context) {
@@ -15,8 +15,7 @@ public class CreateState extends SelectOrMoveState {
 
         var hit = context.findObjectAt(event.worldX(), event.worldY());
         if (hit != null) {
-            // Wir nutzen die Bewegungs-Logik der Basisklasse,
-            // bleiben aber in diesem Zustand und lassen die Toolbar aktiv.
+            // Wir nutzen die Logik der Basisklasse (Selektieren/Verschieben)
             super.handleMousePressed(event, context);
         } else {
             FmcType selectedType = context.getToolbarController().getSelectedType();

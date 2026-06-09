@@ -3,7 +3,7 @@ package de.fmc.editor.controller;
 import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.state.CreateConnectionState;
 import de.fmc.editor.state.CreateState;
-import de.fmc.editor.state.SelectOrMoveState;
+import de.fmc.editor.state.IdleState;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
@@ -22,6 +22,8 @@ public class ToolbarController {
     private ToggleButton connectButton;
     @FXML
     private CheckBox snapToGridCheckbox;
+    @FXML
+    private CheckBox waypointsCheckbox;
     @FXML
     private CheckBox stickyCheckbox;
 
@@ -49,12 +51,26 @@ public class ToolbarController {
         return snapToGridCheckbox.isSelected();
     }
 
+    public boolean isWaypointsVisible() {
+        return waypointsCheckbox != null && waypointsCheckbox.isSelected();
+    }
+
+    @FXML
+    public void onWaypointsAction(ActionEvent event) {
+        if (canvasController != null) {
+            canvasController.getRegistry().setLayerVisibility(
+                de.fmc.editor.core.CoreRegistry.WAYPOINT_LAYER_ID, 
+                waypointsCheckbox.isSelected()
+            );
+        }
+    }
+
     @FXML
     public void onCircleClick(ActionEvent event) {
         if (circleButton.isSelected()) {
             canvasController.setCurrentState(new CreateState());
         } else {
-            canvasController.setCurrentState(new SelectOrMoveState());
+            canvasController.setCurrentState(new IdleState());
         }
     }
 
@@ -63,7 +79,7 @@ public class ToolbarController {
         if (rectButton.isSelected()) {
             canvasController.setCurrentState(new CreateState());
         } else {
-            canvasController.setCurrentState(new SelectOrMoveState());
+            canvasController.setCurrentState(new IdleState());
         }
     }
 
@@ -72,7 +88,7 @@ public class ToolbarController {
         if (connectButton.isSelected()) {
             canvasController.setCurrentState(new CreateConnectionState());
         } else {
-            canvasController.setCurrentState(new SelectOrMoveState());
+            canvasController.setCurrentState(new IdleState());
         }
     }
 

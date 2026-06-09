@@ -56,7 +56,26 @@ public class MainController {
                     }
                     event.consume();
                 }
+            } else if (event.getCode() == javafx.scene.input.KeyCode.DELETE || 
+                       event.getCode() == javafx.scene.input.KeyCode.BACK_SPACE) {
+                deleteSelected();
+                event.consume();
             }
         });
+    }
+
+    private void deleteSelected() {
+        var selectedIds = canvasController.getSelectedObjectIds();
+        if (!selectedIds.isEmpty()) {
+            var cmd = new de.fmc.editor.core.command.DeleteSelectedCommand(
+                canvasController.getRegistry(), 
+                new java.util.ArrayList<>(selectedIds)
+            );
+            canvasController.getCommandHistory().executeCommand(cmd);
+            
+            // Auswahl leeren
+            selectedIds.clear();
+            canvasController.updateSelectionInView();
+        }
     }
 }

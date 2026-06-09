@@ -6,5 +6,6 @@ public record MouseEventData(
     double sceneX,
     double sceneY,
     int clickCount,
-    boolean isPrimaryButtonDown
+    boolean isPrimaryButtonDown,
+    boolean isControlDown
 ) {}

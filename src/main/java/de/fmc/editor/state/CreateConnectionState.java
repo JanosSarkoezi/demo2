@@ -27,8 +27,15 @@ public class CreateConnectionState implements EditorState {
         if (!connectionFinished) {
             cleanupCollectedWaypoints(context);
         }
+        
+        // Selektion aufheben beim Verlassen des States
+        context.getSelectedObjectIds().clear();
+        context.updateSelectionInView();
+
         System.out.println("Verbindungs-Modus verlassen: Blende Wegpunkte aus.");
-        context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false);
+        if (!context.getToolbarController().isWaypointsVisible()) {
+            context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false);
+        }
     }
 
     @Override
@@ -40,6 +47,12 @@ public class CreateConnectionState implements EditorState {
             if (hit != null && hit.type() != FmcType.WEGPUNKT) {
                 sourceObjectId = hit.id();
                 connectionFinished = false;
+
+                // Visuelles Feedback: Start-Objekt selektieren (Highlight)
+                context.getSelectedObjectIds().clear();
+                context.getSelectedObjectIds().add(sourceObjectId);
+                context.updateSelectionInView();
+
                 System.out.println("Start-Objekt fuer Verbindung gewaehlt: " + sourceObjectId);
             }
             return;
@@ -71,6 +84,11 @@ public class CreateConnectionState implements EditorState {
                 context.getCommandHistory().addExecutedCommand(cmd);
                 System.out.println("Polygon-Verbindung erfolgreich via Command erstellt!");
                 connectionFinished = true;
+
+                // Selektion aufheben nach Erfolg
+                context.getSelectedObjectIds().clear();
+                context.updateSelectionInView();
+
                 // Reset für die nächste Verbindung im selben State
                 sourceObjectId = null;
                 collectedWaypointIds.clear();
@@ -99,6 +117,12 @@ public class CreateConnectionState implements EditorState {
         
         // Da diese Wegpunkte verworfen wurden, löschen wir sie auch aus dem Redo-Stack
         context.getCommandHistory().clearRedoStack();
+
+        // Highlight entfernen
+        if (sourceObjectId != null) {
+            context.getSelectedObjectIds().remove(sourceObjectId);
+            context.updateSelectionInView();
+        }
 
         sourceObjectId = null;
         collectedWaypointIds.clear();

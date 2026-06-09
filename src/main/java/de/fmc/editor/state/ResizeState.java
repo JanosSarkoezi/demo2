@@ -36,7 +36,7 @@ public class ResizeState implements EditorState {
     public void handleMousePressed(MouseEventData event, CanvasController context) {
         FmcObject obj = getTargetObject(context);
         if (obj == null) {
-            context.setCurrentState(new SelectOrMoveState());
+            context.setCurrentState(new IdleState());
             return;
         }
 
@@ -47,7 +47,7 @@ public class ResizeState implements EditorState {
             if (hit != null) {
                 if (hit.id().equals(targetObjectId)) {
                     // Wieder das gleiche Objekt -> Move-Modus innerhalb von Resize? 
-                    context.setCurrentState(new SelectOrMoveState());
+                    context.setCurrentState(new IdleState());
                     context.getCurrentState().handleMousePressed(event, context);
                 } else {
                     // Ein neues Objekt -> Zu diesem wechseln
@@ -57,7 +57,7 @@ public class ResizeState implements EditorState {
                 }
             } else {
                 // Ins Leere geklickt -> Deselektieren
-                context.setCurrentState(new SelectOrMoveState());
+                context.setCurrentState(new IdleState());
             }
         } else {
             lastMouseX = event.worldX();

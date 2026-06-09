@@ -4,7 +4,6 @@ import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.state.EditorState;
 import de.fmc.editor.state.MouseEventData;
-import de.fmc.editor.state.SelectOrMoveState;
 import de.fmc.editor.view.GraphView;
 import de.fmc.editor.view.ViewMapper;
 import javafx.fxml.FXML;
@@ -21,7 +20,7 @@ public class CanvasController {
     private CoreRegistry registry;
     private ToolbarController toolbarController;
     private ViewMapper viewMapper;
-    private EditorState currentState = new SelectOrMoveState();
+    private EditorState currentState = new de.fmc.editor.state.IdleState();
 
     private final de.fmc.editor.core.command.CommandHistory commandHistory = new de.fmc.editor.core.command.CommandHistory();
 
@@ -53,7 +52,7 @@ public class CanvasController {
         if (this.currentState != null) {
             this.currentState.enterState(this);
         }
-        
+
         // Wenn wir den ResizeState verlassen, Handles löschen
         if (viewMapper != null && !(state instanceof de.fmc.editor.state.ResizeState)) {
             viewMapper.setSelectedObject(null, null);
@@ -72,6 +71,18 @@ public class CanvasController {
         return toolbarController;
     }
 
+    private final java.util.Set<UUID> selectedObjectIds = new java.util.HashSet<>();
+
+    public java.util.Set<UUID> getSelectedObjectIds() {
+        return selectedObjectIds;
+    }
+
+    public void updateSelectionInView() {
+        if (viewMapper != null) {
+            viewMapper.setSelectedObjects(selectedObjectIds);
+        }
+    }
+
     @FXML
     public void onMousePressed(MouseEvent event) {
         javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
@@ -79,7 +90,8 @@ public class CanvasController {
             worldPos.getX(), worldPos.getY(),
             event.getSceneX(), event.getSceneY(),
             event.getClickCount(),
-            event.isPrimaryButtonDown()
+            event.isPrimaryButtonDown(),
+            event.isControlDown()
         );
         currentState.handleMousePressed(data, this);
     }
@@ -91,7 +103,8 @@ public class CanvasController {
             worldPos.getX(), worldPos.getY(),
             event.getSceneX(), event.getSceneY(),
             event.getClickCount(),
-            event.isPrimaryButtonDown()
+            event.isPrimaryButtonDown(),
+            event.isControlDown()
         );
         currentState.handleMouseDragged(data, this);
     }
@@ -103,7 +116,8 @@ public class CanvasController {
             worldPos.getX(), worldPos.getY(),
             event.getSceneX(), event.getSceneY(),
             event.getClickCount(),
-            event.isPrimaryButtonDown()
+            event.isPrimaryButtonDown(),
+            event.isControlDown()
         );
         currentState.handleMouseReleased(data, this);
     }
@@ -128,6 +142,28 @@ public class CanvasController {
         return null;
     }
 
+    public java.util.List<UUID> findObjectsInBounds(double x1, double y1, double x2, double y2) {
+        double minX = Math.min(x1, x2);
+        double maxX = Math.max(x1, x2);
+        double minY = Math.min(y1, y2);
+        double maxY = Math.max(y1, y2);
+
+        return registry.getObjects().stream()
+            .filter(obj -> {
+                // Check layer visibility
+                var layer = registry.getLayers().get(obj.layerId());
+                if (layer != null && !layer.visible()) {
+                    return false;
+                }
+
+                // Wir prüfen einfach, ob das Zentrum des Objekts im Rahmen liegt
+                return obj.x() >= minX && obj.x() <= maxX &&
+                       obj.y() >= minY && obj.y() <= maxY;
+            })
+            .map(de.fmc.editor.core.model.FmcObject::id)
+            .toList();
+    }
+
     public FmcObject findObjectAt(double x, double y) {
         // x und y sind hier bereits Weltkoordinaten
         return registry.getObjects().stream()
@@ -138,9 +174,9 @@ public class CanvasController {
                     return false;
                 }
 
-                if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS || 
+                if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS ||
                     obj.type() == de.fmc.editor.core.model.FmcType.WEGPUNKT) {
-                    
+
                     // Für Wegpunkte geben wir eine etwas größere Klick-Zone (10px statt 5px)
                     double radius = (obj.type() == de.fmc.editor.core.model.FmcType.WEGPUNKT) ? 12.0 : (obj.width() / 2);
                     double dx = obj.x() - x;

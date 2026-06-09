@@ -24,12 +24,48 @@ public class ViewMapper implements RegistryListener {
     private final Map<UUID, Shape> visualNodes = new HashMap<>();
     private final Map<UUID, Path> visualConnections = new HashMap<>();
     private final List<Shape> activeHandles = new ArrayList<>();
+    private final Group handleGroup = new Group();
+    private final java.util.Set<UUID> selectedObjectIds = new java.util.HashSet<>();
     private UUID selectedObjectId = null;
     private RoutingStrategy routingStrategy = new StraightLineRouting();
 
     public ViewMapper(GraphView graphView, de.fmc.editor.core.CoreRegistry registry) {
         this.graphView = graphView;
         this.registry = registry;
+        this.graphView.getUiLayer().getChildren().add(handleGroup);
+    }
+
+    public void setSelectedObjects(java.util.Collection<UUID> objectIds) {
+        // 1. Alten Effekt von allen bisher selektierten Nodes entfernen
+        for (UUID id : this.selectedObjectIds) {
+            javafx.scene.shape.Shape node = visualNodes.get(id);
+            if (node != null) {
+                node.setEffect(null);
+            }
+        }
+
+        // 2. Neue IDs übernehmen
+        this.selectedObjectIds.clear();
+        if (objectIds != null) {
+            this.selectedObjectIds.addAll(objectIds);
+        }
+
+        // 3. Neuen Effekt auf die frisch selektierten Nodes anwenden
+        for (UUID id : this.selectedObjectIds) {
+            javafx.scene.shape.Shape node = visualNodes.get(id);
+            if (node != null) {
+                // HIER WÄHLST DU DEN EFFEKT AUS
+                node.setEffect(createGlowEffect());
+            }
+        }
+    }
+
+    private javafx.scene.effect.Effect createGlowEffect() {
+        javafx.scene.effect.DropShadow glow = new javafx.scene.effect.DropShadow();
+        glow.setColor(javafx.scene.paint.Color.web("#0078D7")); // Ein schickes Aktiv-Blau
+        glow.setRadius(15.0);                                             // Weite des Scheins
+        glow.setSpread(0.5);                                              // Dichte des Scheins innen
+        return glow;
     }
 
     public void setRoutingStrategy(RoutingStrategy strategy) {
@@ -101,7 +137,7 @@ public class ViewMapper implements RegistryListener {
     }
 
     private void refreshHandles(List<Handle> handles) {
-        graphView.getUiLayer().getChildren().clear();
+        handleGroup.getChildren().clear();
         activeHandles.clear();
 
         if (selectedObjectId != null && handles != null) {
@@ -110,7 +146,7 @@ public class ViewMapper implements RegistryListener {
                 rect.setFill(javafx.scene.paint.Color.BLACK);
                 rect.setStroke(javafx.scene.paint.Color.WHITE);
                 rect.setStrokeWidth(1.0);
-                graphView.getUiLayer().getChildren().add(rect);
+                handleGroup.getChildren().add(rect);
                 activeHandles.add(rect);
             }
         }
@@ -140,6 +176,10 @@ public class ViewMapper implements RegistryListener {
 
         // ID in den Properties speichern
         shape.getProperties().put("UUID", obj.id());
+
+        if (this.selectedObjectIds.contains(obj.id())) {
+            shape.setEffect(createGlowEffect());
+        }
 
         visualNodes.put(obj.id(), shape);
         graphView.getShapeLayer().getChildren().add(shape);

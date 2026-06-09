@@ -58,6 +58,10 @@
                   selected="true" styleClass="settings-checkbox"
                   onAction="#onSnapToGridAction"/>
 
+        <CheckBox fx:id="waypointsCheckbox" text="Wegpunkte"
+                  styleClass="settings-checkbox"
+                  onAction="#onWaypointsAction"/>
+
         <CheckBox fx:id="stickyCheckbox" text="Verkleben"
                   styleClass="settings-checkbox"/>
     </VBox>

@@ -71,14 +71,23 @@ public class CoreRegistry {
     public void removeObject(UUID id) {
         if (objects.containsKey(id)) {
             objects.remove(id);
-            // Auch Verbindungen entfernen, die dieses Objekt nutzen (Source, Target oder Waypoint)
+            
+            // 1. Verbindungen finden, die dieses Objekt als Source oder Target nutzen -> Löschen
             List<UUID> toRemove = connections.entrySet().stream()
                     .filter(e -> e.getValue().sourceId().equals(id) || 
-                                 e.getValue().targetId().equals(id) ||
-                                 e.getValue().waypointIds().contains(id))
+                                 e.getValue().targetId().equals(id))
                     .map(Map.Entry::getKey)
                     .toList();
             toRemove.forEach(this::removeConnection);
+
+            // 2. Verbindungen finden, die dieses Objekt als Wegpunkt nutzen -> Update (entfernen aus Liste)
+            connections.forEach((connId, conn) -> {
+                if (conn.waypointIds().contains(id)) {
+                    List<UUID> updatedWaypoints = new ArrayList<>(conn.waypointIds());
+                    updatedWaypoints.remove(id);
+                    updateConnectionWaypoints(connId, updatedWaypoints);
+                }
+            });
 
             fireEvent(new RegistryEvent.ObjectRemoved(id));
         }
@@ -92,17 +101,22 @@ public class CoreRegistry {
         if (source.type() == target.type()) return null;
 
         // Validierung: Keine doppelten Verbindungen (A -> B oder B -> A)
-        boolean connectionExists = connections.values().stream().anyMatch(c -> 
-            (c.sourceId().equals(sourceId) && c.targetId().equals(targetId)) ||
-            (c.sourceId().equals(targetId) && c.targetId().equals(sourceId))
-        );
-        if (connectionExists) return null;
+//        boolean connectionExists = connections.values().stream().anyMatch(c ->
+//            (c.sourceId().equals(sourceId) && c.targetId().equals(targetId)) ||
+//            (c.sourceId().equals(targetId) && c.targetId().equals(sourceId))
+//        );
+//        if (connectionExists) return null;
 
         UUID connId = UUID.randomUUID();
         Connection connection = new Connection(sourceId, targetId, new ArrayList<>(waypointIds));
         connections.put(connId, connection);
         fireEvent(new RegistryEvent.ConnectionAdded(connId, connection));
         return connId;
+    }
+
+    public void addConnection(UUID id, Connection connection) {
+        connections.put(id, connection);
+        fireEvent(new RegistryEvent.ConnectionAdded(id, connection));
     }
 
     public void removeConnection(UUID id) {
