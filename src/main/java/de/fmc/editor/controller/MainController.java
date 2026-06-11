@@ -3,6 +3,10 @@ package de.fmc.editor.controller;
 import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.view.ViewMapper;
 import javafx.fxml.FXML;
+import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyCodeCombination;
+import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.VBox;
 
 public class MainController {
@@ -45,29 +49,32 @@ public class MainController {
         registry.addConnection(k1.id(), q1.id(), java.util.Collections.emptyList());
     }
 
-    public void setupShortcuts(javafx.scene.Scene scene) {
-        scene.setOnKeyPressed(event -> {
-            if (event.isControlDown()) {
-                if (event.getCode() == javafx.scene.input.KeyCode.Z) {
-                    if (event.isShiftDown()) {
-                        canvasController.getCommandHistory().redo();
-                    } else {
-                        canvasController.getCommandHistory().undo();
-                    }
+    public void setupShortcuts(Scene scene) {
+        var accelerators = scene.getAccelerators();
 
-//                    StackWalker.getInstance().walk(frames -> frames
-//                            .filter(f -> f.getClassName().startsWith("de.fmc"))
-//                            .limit(10)
-//                            .peek(f -> System.out.println("   -> Verursacht durch: " + f.getMethodName() + " in " + f.getClassName()))
-//                            .toList());
-//                    event.consume();
-                }
-            } else if (event.getCode() == javafx.scene.input.KeyCode.DELETE || 
-                       event.getCode() == javafx.scene.input.KeyCode.BACK_SPACE) {
-                deleteSelected();
-                event.consume();
-            }
-        });
+        // 1. STRG + Z -> Undo
+        accelerators.put(
+            new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN),
+            () -> canvasController.getCommandHistory().undo()
+        );
+
+        // 2. STRG + SHIFT + Z -> Redo
+        accelerators.put(
+            new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN),
+            () -> canvasController.getCommandHistory().redo()
+        );
+
+        // 3. ENTF -> Löschen
+        accelerators.put(
+            new KeyCodeCombination(KeyCode.DELETE),
+            this::deleteSelected
+        );
+
+        // 4. BACKSPACE -> Alternativ auch Löschen
+        accelerators.put(
+            new KeyCodeCombination(KeyCode.BACK_SPACE),
+            this::deleteSelected
+        );
     }
 
     private void deleteSelected() {
