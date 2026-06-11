@@ -20,6 +20,10 @@
     -fx-border-width: 0 0 0 4;
 }
 
+.tool-button:hover {
+    -fx-background-color: #e8f4fd;
+}
+
 .tool-button:selected {
     -fx-background-color: #dceefb;
     -fx-border-color: #3498db;

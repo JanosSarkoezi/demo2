@@ -5,6 +5,7 @@ import de.fmc.editor.core.event.RegistryListener;
 import de.fmc.editor.core.factory.FmcFactory;
 import de.fmc.editor.core.model.Connection;
 import de.fmc.editor.core.model.FmcObject;
+import de.fmc.editor.core.persistence.DiagramData;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -183,5 +184,31 @@ public class CoreRegistry {
 
     public Map<UUID, de.fmc.editor.core.model.Layer> getLayers() {
         return Collections.unmodifiableMap(layers);
+    }
+
+    public DiagramData exportData() {
+        return new DiagramData(
+            new ArrayList<>(objects.values()),
+            new HashMap<>(connections),
+            new ArrayList<>(layers.values())
+        );
+    }
+
+    public void loadData(DiagramData data) {
+        objects.clear();
+        connections.clear();
+        layers.clear();
+
+        if (data.objects() != null) {
+            data.objects().forEach(obj -> objects.put(obj.id(), obj));
+        }
+        if (data.connections() != null) {
+            connections.putAll(data.connections());
+        }
+        if (data.layers() != null) {
+            data.layers().forEach(layer -> layers.put(layer.id(), layer));
+        }
+
+        fireEvent(new RegistryEvent.RegistryReset());
     }
 }

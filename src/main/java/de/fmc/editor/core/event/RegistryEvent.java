@@ -18,4 +18,6 @@ public sealed interface RegistryEvent {
     record LayerAdded(Layer layer) implements RegistryEvent {}
     record LayerRemoved(UUID id) implements RegistryEvent {}
     record LayerVisibilityChanged(UUID id, boolean visible) implements RegistryEvent {}
+
+    record RegistryReset() implements RegistryEvent {}
 }
