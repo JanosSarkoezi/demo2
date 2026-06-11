@@ -9,9 +9,12 @@ import javafx.fxml.FXML;
 import javafx.scene.control.CheckBox;
 import javafx.scene.control.ToggleButton;
 import javafx.scene.control.ToggleGroup;
+import javafx.scene.layout.VBox;
 
 public class ToolbarController {
 
+    @FXML
+    private VBox toolbarContainer;
     @FXML
     private ToggleGroup toolGroup;
     @FXML
@@ -95,5 +98,41 @@ public class ToolbarController {
     @FXML
     public void onSnapToGridAction(ActionEvent event) {
         // Handle snap to grid setting
+    }
+
+    @FXML
+    public void onSaveClick(ActionEvent event) {
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("Diagramm speichern");
+        fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("JSON Dateien", "*.json"));
+        java.io.File file = fileChooser.showSaveDialog(toolbarContainer.getScene().getWindow());
+
+        if (file != null) {
+            try (java.io.FileWriter writer = new java.io.FileWriter(file, java.nio.charset.StandardCharsets.UTF_8)) {
+                var data = canvasController.getRegistry().exportData();
+                de.fmc.editor.core.persistence.PersistenceService.saveDiagram(data, writer);
+            } catch (java.io.IOException e) {
+                e.printStackTrace();
+            }
+        }
+    }
+
+    @FXML
+    public void onLoadClick(ActionEvent event) {
+        javafx.stage.FileChooser fileChooser = new javafx.stage.FileChooser();
+        fileChooser.setTitle("Diagramm laden");
+        fileChooser.getExtensionFilters().add(new javafx.stage.FileChooser.ExtensionFilter("JSON Dateien", "*.json"));
+        java.io.File file = fileChooser.showOpenDialog(toolbarContainer.getScene().getWindow());
+
+        if (file != null) {
+            try (java.io.FileReader reader = new java.io.FileReader(file, java.nio.charset.StandardCharsets.UTF_8)) {
+                var data = de.fmc.editor.core.persistence.PersistenceService.loadDiagram(reader);
+                canvasController.getRegistry().loadData(data);
+                // History leeren nach dem Laden
+                canvasController.getCommandHistory().clear();
+            } catch (java.io.IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

@@ -65,4 +65,12 @@
         <CheckBox fx:id="stickyCheckbox" text="Verkleben"
                   styleClass="settings-checkbox"/>
     </VBox>
+
+    <Separator>
+        <VBox.margin><Insets top="10" bottom="10"/></VBox.margin>
+    </Separator>
+
+    <Label text="Diagramm" styleClass="section-label"/>
+    <Button text="Speichern" maxWidth="Infinity" onAction="#onSaveClick" styleClass="tool-button"/>
+    <Button text="Laden" maxWidth="Infinity" onAction="#onLoadClick" styleClass="tool-button"/>
 </VBox>

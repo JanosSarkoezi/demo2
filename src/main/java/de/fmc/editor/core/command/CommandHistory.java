@@ -28,6 +28,11 @@ public class CommandHistory {
         redoStack.clear();
     }
 
+    public void clear() {
+        undoStack.clear();
+        redoStack.clear();
+    }
+
     public void undo() {
         if (!undoStack.isEmpty()) {
             Command cmd = undoStack.pop();

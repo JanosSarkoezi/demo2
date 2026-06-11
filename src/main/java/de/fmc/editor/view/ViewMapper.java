@@ -113,6 +113,7 @@ public class ViewMapper implements RegistryListener {
             case RegistryEvent.LayerAdded(var layer) -> {} 
             case RegistryEvent.LayerRemoved(var id) -> {}
             case RegistryEvent.LayerVisibilityChanged(var id, var visible) -> handleLayerVisibilityChanged(id, visible);
+            case RegistryEvent.RegistryReset() -> handleRegistryReset();
         }
 
         // Falls das selektierte Objekt geändert wurde (z.B. durch Undo/Redo), Handles refreshen
@@ -156,6 +157,25 @@ public class ViewMapper implements RegistryListener {
                 activeHandles.add(rect);
             }
         }
+    }
+
+    private void handleRegistryReset() {
+        // Alles wegräumen
+        visualNodes.values().forEach(node -> graphView.getShapeLayer().getChildren().remove(node));
+        visualNodes.clear();
+        visualConnections.values().forEach(path -> graphView.getConnectionLayer().getChildren().remove(path));
+        visualConnections.clear();
+        handleGroup.getChildren().clear();
+        activeHandles.clear();
+        selectedObjectIds.clear();
+        selectedObjectId = null;
+
+        // Alles neu aufbauen
+        registry.getObjects().forEach(this::handleObjectAdded);
+        registry.getConnections().forEach(this::handleConnectionAdded);
+
+        // Layer-Sichtbarkeiten anwenden
+        registry.getLayers().forEach((id, layer) -> handleLayerVisibilityChanged(id, layer.visible()));
     }
 
     private void handleObjectAdded(de.fmc.editor.core.model.FmcObject obj) {
