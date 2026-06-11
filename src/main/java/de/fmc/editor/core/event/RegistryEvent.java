@@ -10,6 +10,7 @@ public sealed interface RegistryEvent {
     record ObjectRemoved(UUID id) implements RegistryEvent {}
     record ObjectMoved(UUID id, double newX, double newY) implements RegistryEvent {}
     record ObjectResized(UUID id, double newW, double newH) implements RegistryEvent {}
+    record ObjectTextUpdated(UUID id, String newText) implements RegistryEvent {}
 
     record ConnectionAdded(UUID id, Connection connection) implements RegistryEvent {}
     record ConnectionRemoved(UUID id) implements RegistryEvent {}

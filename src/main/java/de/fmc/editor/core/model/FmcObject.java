@@ -10,10 +10,12 @@ public record FmcObject(
     double y,
     double width,
     double height,
-    UUID layerId
+    UUID layerId,
+    String text
 ) {
     public FmcObject {
         Objects.requireNonNull(id, "ID darf nicht null sein");
         Objects.requireNonNull(type, "Typ darf nicht null sein");
+        if (text == null) text = "";
     }
 }

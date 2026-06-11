@@ -5,7 +5,7 @@ import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.core.model.Handle;
 import de.fmc.editor.core.model.HandleType;
-import de.fmc.editor.view.ViewMapper;
+import de.fmc.editor.view.HandleViewMapper;
 import java.util.UUID;
 
 public class ResizeState implements EditorState {
@@ -28,7 +28,7 @@ public class ResizeState implements EditorState {
         System.out.println("Entering ResizeState for: " + targetObjectId);
         FmcObject obj = getTargetObject(context);
         if (obj != null && context.getViewMapper() != null) {
-            context.getViewMapper().setSelectedObject(targetObjectId, ViewMapper.getHandles(obj));
+            context.getViewMapper().setSelectedObject(targetObjectId, HandleViewMapper.getHandles(obj));
         }
     }
 
@@ -140,7 +140,7 @@ public class ResizeState implements EditorState {
     }
 
     private HandleType findHandleAt(FmcObject obj, double x, double y) {
-        for (Handle h : ViewMapper.getHandles(obj)) {
+        for (Handle h : HandleViewMapper.getHandles(obj)) {
             double dx = h.x() - x;
             double dy = h.y() - y;
             if ((dx * dx + dy * dy) <= (10 * 10)) { // 10px Radius für Handles

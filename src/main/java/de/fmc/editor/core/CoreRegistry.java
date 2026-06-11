@@ -69,6 +69,17 @@ public class CoreRegistry {
         }
     }
 
+    public void updateObjectText(UUID id, String newText) {
+        FmcObject original = objects.get(id);
+        if (original != null) {
+            if (!original.text().equals(newText)) {
+                FmcObject updated = FmcFactory.updateText(original, newText);
+                objects.put(id, updated);
+                fireEvent(new RegistryEvent.ObjectTextUpdated(id, newText));
+            }
+        }
+    }
+
     public void removeObject(UUID id) {
         if (objects.containsKey(id)) {
             objects.remove(id);

@@ -37,6 +37,10 @@ public class MainController {
         
         // Den ViewMapper hier initialisieren, damit er sicher die Pane vom CanvasController nutzt
         this.viewMapper = new ViewMapper(canvasController.getDrawingPane(), registry);
+        this.viewMapper.setOnTextUpdateRequested((id, newText) -> {
+            var cmd = new de.fmc.editor.core.command.UpdateTextCommand(registry, id, newText);
+            canvasController.getCommandHistory().executeCommand(cmd);
+        });
         registry.addListener(viewMapper);
         
         canvasController.setViewMapper(viewMapper);
@@ -44,8 +48,10 @@ public class MainController {
         // --- Demo-Daten für Etappe 4 ---
         var k1 = de.fmc.editor.core.factory.FmcFactory.createObject(de.fmc.editor.core.model.FmcType.KREIS, 200, 200, CoreRegistry.DEFAULT_LAYER_ID);
         var q1 = de.fmc.editor.core.factory.FmcFactory.createObject(de.fmc.editor.core.model.FmcType.QUADRAT, 400, 200, CoreRegistry.DEFAULT_LAYER_ID);
+        var t1 = de.fmc.editor.core.factory.FmcFactory.createObject(de.fmc.editor.core.model.FmcType.TEXT_BOX, 300, 400, CoreRegistry.DEFAULT_LAYER_ID);
         registry.addObject(k1);
         registry.addObject(q1);
+        registry.addObject(t1);
         registry.addConnection(k1.id(), q1.id(), java.util.Collections.emptyList());
     }
 

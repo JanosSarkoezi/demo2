@@ -38,6 +38,15 @@
         </graphic>
     </ToggleButton>
 
+    <ToggleButton fx:id="textButton" toggleGroup="$toolGroup"
+                  maxWidth="Infinity" styleClass="tool-button"
+                  text="_Text" onAction="#onTextClick">
+        <tooltip><Tooltip text="Textbox zeichnen (Alt+T)"/></tooltip>
+        <graphic>
+            <Label text="Abc" style="-fx-font-weight: bold; -fx-text-fill: #555;"/>
+        </graphic>
+    </ToggleButton>
+
     <ToggleButton fx:id="connectButton" toggleGroup="$toolGroup"
                   maxWidth="Infinity" styleClass="tool-button"
                   text="_Verbinden" onAction="#onConnClick">

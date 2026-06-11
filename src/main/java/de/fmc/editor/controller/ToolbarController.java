@@ -22,6 +22,8 @@ public class ToolbarController {
     @FXML
     private ToggleButton rectButton;
     @FXML
+    private ToggleButton textButton;
+    @FXML
     private ToggleButton connectButton;
     @FXML
     private CheckBox snapToGridCheckbox;
@@ -39,6 +41,7 @@ public class ToolbarController {
     public FmcType getSelectedType() {
         if (circleButton.isSelected()) return FmcType.KREIS;
         if (rectButton.isSelected()) return FmcType.QUADRAT;
+        if (textButton != null && textButton.isSelected()) return FmcType.TEXT_BOX;
         return null;
     }
 
@@ -80,6 +83,15 @@ public class ToolbarController {
     @FXML
     public void onRectClick(ActionEvent event) {
         if (rectButton.isSelected()) {
+            canvasController.setCurrentState(new CreateState());
+        } else {
+            canvasController.setCurrentState(new IdleState());
+        }
+    }
+
+    @FXML
+    public void onTextClick(ActionEvent event) {
+        if (textButton.isSelected()) {
             canvasController.setCurrentState(new CreateState());
         } else {
             canvasController.setCurrentState(new IdleState());

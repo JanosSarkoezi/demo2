@@ -63,7 +63,7 @@ public class CreateConnectionState implements EditorState {
             // Klick ins Leere -> Gelben Wegpunkt erzeugen!
             UUID wpId = UUID.randomUUID();
             // Kleine Standardgröße für den Wegpunkt (z.B. 10x10)
-            var wegpunkt = new FmcObject(wpId, FmcType.WEGPUNKT, event.worldX(), event.worldY(), 10, 10, CoreRegistry.WAYPOINT_LAYER_ID);
+            var wegpunkt = new FmcObject(wpId, FmcType.WEGPUNKT, event.worldX(), event.worldY(), 10, 10, CoreRegistry.WAYPOINT_LAYER_ID, "");
 
             // Per Command in die Registry einfügen (wichtig für Undo/Redo!)
             var cmd = new CreateObjectCommand(context.getRegistry(), wegpunkt);
