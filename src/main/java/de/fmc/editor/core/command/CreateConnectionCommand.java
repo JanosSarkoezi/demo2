@@ -21,10 +21,12 @@ public class CreateConnectionCommand implements Command {
     @Override
     public void execute() {
         // Wir prüfen, ob die Verbindung valide ist (Registry-Logik nutzen)
-        // Eigentlich sollte die Validierung schon im State passieren, 
-        // aber hier sichern wir uns ab.
-        registry.addConnection(connectionId, connection);
-        this.success = true;
+        if (registry.validateConnection(connection.sourceId(), connection.targetId())) {
+            registry.addConnection(connectionId, connection);
+            this.success = true;
+        } else {
+            this.success = false;
+        }
     }
 
     public boolean isSuccess() {

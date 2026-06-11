@@ -105,12 +105,21 @@ public class CoreRegistry {
         }
     }
 
-    public UUID addConnection(UUID sourceId, UUID targetId, List<UUID> waypointIds) {
+    public boolean validateConnection(UUID sourceId, UUID targetId) {
+        if (sourceId == null || targetId == null || sourceId.equals(targetId)) return false;
+
         FmcObject source = objects.get(sourceId);
         FmcObject target = objects.get(targetId);
 
-        if (source == null || target == null) return null;
-        if (source.type() == target.type()) return null;
+        if (source == null || target == null) return false;
+        
+        // Bipartite Validierung: Kreis darf nur mit Quadrat (und umgekehrt),
+        // aber niemals Kreis mit Kreis oder Quadrat mit Quadrat.
+        return source.type() != target.type();
+    }
+
+    public UUID addConnection(UUID sourceId, UUID targetId, List<UUID> waypointIds) {
+        if (!validateConnection(sourceId, targetId)) return null;
 
         // Validierung: Keine doppelten Verbindungen (A -> B oder B -> A)
 //        boolean connectionExists = connections.values().stream().anyMatch(c ->

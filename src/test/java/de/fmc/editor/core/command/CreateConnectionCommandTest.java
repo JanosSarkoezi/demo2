@@ -60,4 +60,28 @@ public class CreateConnectionCommandTest {
         cmd.undo();
         assertEquals(0, registry.getConnections().size(), "Connection should be removed after undo");
     }
+
+    @Test
+    public void testExecuteSameTypeFailure() {
+        // Create another circle
+        FmcObject anotherCircle = FmcFactory.createObject(FmcType.KREIS, 200, 200, CoreRegistry.DEFAULT_LAYER_ID);
+        registry.addObject(anotherCircle);
+
+        // Attempt to connect Kreis with Kreis
+        CreateConnectionCommand cmd = new CreateConnectionCommand(registry, source.id(), anotherCircle.id(), Collections.emptyList());
+        cmd.execute();
+
+        assertFalse(cmd.isSuccess(), "Command should fail for same type connection (Kreis to Kreis)");
+        assertEquals(0, registry.getConnections().size(), "No connection should be added");
+    }
+
+    @Test
+    public void testExecuteSelfConnectionFailure() {
+        // Attempt to connect source with itself
+        CreateConnectionCommand cmd = new CreateConnectionCommand(registry, source.id(), source.id(), Collections.emptyList());
+        cmd.execute();
+
+        assertFalse(cmd.isSuccess(), "Command should fail for self-connection");
+        assertEquals(0, registry.getConnections().size(), "No connection should be added");
+    }
 }
