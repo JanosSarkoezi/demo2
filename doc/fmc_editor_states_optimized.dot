@@ -1,0 +1,198 @@
+digraph G {
+    page="8.3,11.7"; // A4
+    size="7.8,11.0";
+    ratio="filled";
+    rankdir=LR;
+    splines=true;
+    overlap=false;
+    nodesep=0.5;
+    ranksep=0.7;
+    background="#fafafb";
+
+    node [
+        shape=circle,
+        style="filled,bold",
+        fillcolor="#eef2f7",
+        color="#2b4c7e",
+        fontname="Helvetica,Arial,sans-serif",
+        fontsize=10,
+        fontcolor="#1a2e40",
+        width=2.0,
+        fixedsize=true
+    ];
+
+    edge [
+        fontname="Helvetica,Arial,sans-serif",
+        fontsize=9,
+        color="#5c7699",
+        arrowsize=0.8,
+        fontcolor="#2c3e50"
+    ];
+
+    // States
+    IdleState [label="IdleState\n\n(Standardmodus /\nTool: SELECT)"];
+    CreateState [label="CreateState\n\n(Formen zeichnen /\nTool: CREATE)"];
+    CreateConnectionState [label="CreateConnectionState\n\n(Linien ziehen /\nTool: CONNECTION)"];
+
+    // Transient States
+    DragObjectsState [label="DragObjectsState\n\n(Objekte\nverschieben)"];
+    ResizeState [label="ResizeState\n\n(Größenänderung\nvon Objekten)"];
+    BoxSelectionState [label="BoxSelectionState\n\n(Rahmenauswahl)"];
+    PanningState [label="PanningState\n\n(Canvas-Schwenk)"];
+
+    // 1. TOOLBAR / MENU SELECTIONS (How to enter Create / Connection / Idle)
+    IdleState -> CreateState [color="#e67e22", style="dashed", weight=1, label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#fff3e0">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur / Toolbar:</I></FONT> Klick 'Kreis/Rechteck'</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#e67e22" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Keine Werkzeugaktivierung</TD></TR>
+        </TABLE>
+    >];
+
+    IdleState -> CreateConnectionState [color="#e67e22", style="dashed", weight=1, label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#fff3e0">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur / Toolbar:</I></FONT> Klick 'Verbindung'</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#e67e22" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Keine Werkzeugaktivierung</TD></TR>
+        </TABLE>
+    >];
+
+    CreateState -> IdleState [color="#e67e22", style="dashed", weight=1, label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#fff3e0">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur / Toolbar:</I></FONT> Klick 'Auswählen' (Select)</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#e67e22" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Keine</TD></TR>
+        </TABLE>
+    >];
+
+    CreateConnectionState -> IdleState [color="#e67e22", style="dashed", weight=1, label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#fff3e0">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur / Toolbar:</I></FONT> Klick 'Auswählen' (Select)</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#e67e22" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Keine</TD></TR>
+        </TABLE>
+    >];
+
+    CreateState -> CreateConnectionState [color="#e67e22", style="dashed", weight=1, label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#fff3e0">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur / Toolbar:</I></FONT> Klick 'Verbindung'</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#e67e22" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Keine</TD></TR>
+        </TABLE>
+    >];
+
+    // 2. FROM IDLESTATE TO TRANSIENT STATES
+    IdleState -> ResizeState [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ffffff">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#b4c6e7" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Primär, Doppel-Klick auf Objekt</TD></TR>
+        </TABLE>
+    >];
+
+    IdleState -> BoxSelectionState [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ffffff">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#c0392b"><I>Tastatur:</I></FONT> STRG (gedrückt halten)</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#b4c6e7" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Primär, Klick + Drag ins Leere</TD></TR>
+        </TABLE>
+    >];
+
+    IdleState -> DragObjectsState [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ffffff">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#b4c6e7" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Primär, Klick auf Objekt + Drag</TD></TR>
+        </TABLE>
+    >];
+
+    IdleState -> PanningState [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ffffff">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#b4c6e7" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Primär, Klick ins Leere + Drag</TD></TR>
+        </TABLE>
+    >];
+
+    IdleState -> IdleState [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ffffff">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> ENTF / BACKSPACE / STRG+Z</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#b4c6e7" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Rad (Zoom) / Doppel-Klick (Wegpunkt)</TD></TR>
+        </TABLE>
+    >];
+
+    // 3. INTERNAL ACTIONS FOR CREATE AND CONNECTION
+    CreateState -> CreateState [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ffffff">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> STRG+Z / STRG+SHIFT+Z</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#b4c6e7" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Primär, Klick ins Leere (Platziere)</TD></TR>
+        </TABLE>
+    >];
+
+    CreateConnectionState -> CreateConnectionState [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ffffff">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#b4c6e7" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Klick Startobjekt / Klick im Raum</TD></TR>
+        </TABLE>
+    >];
+
+    CreateConnectionState -> IdleState [color="#27ae60", penwidth=1.5, label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#e8f8f5">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#27ae60" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#27ae60"><I>Maus:</I></FONT> Klick auf Zielobjekt (Verbindung fertig)</TD></TR>
+        </TABLE>
+    >];
+
+    // 4. TRANSIENT STATE LOOPS AND RETURNS (reactivateCurrentTool)
+    DragObjectsState -> DragObjectsState [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ffffff">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#b4c6e7" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Maus gezogen (Dragged)</TD></TR>
+        </TABLE>
+    >];
+
+    DragObjectsState -> IdleState [color="#2980b9", style="solid", label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#eaf2f8">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#2980b9" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Losgelassen:  Reaktiviert SELECT Tool</TD></TR>
+        </TABLE>
+    >];
+
+    ResizeState -> ResizeState [label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#ffffff">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#b4c6e7" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Drag auf Handle / Klick neues Objekt</TD></TR>
+        </TABLE>
+    >];
+
+    ResizeState -> IdleState [color="#2980b9", label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#eaf2f8">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#2980b9" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Klick ins Leere / Losgelassen</TD></TR>
+        </TABLE>
+    >];
+
+    BoxSelectionState -> IdleState [color="#2980b9", label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#eaf2f8">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#2980b9" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Primär losgelassen (Auswahl fertig)</TD></TR>
+        </TABLE>
+    >];
+
+    PanningState -> IdleState [color="#2980b9", label=<
+        <TABLE BORDER="0" CELLBORDER="1" CELLSPACING="0" CELLPADDING="4" BGCOLOR="#eaf2f8">
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#7f8c8d"><I>Tastatur:</I></FONT> Keine</TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0" HEIGHT="1" BGCOLOR="#2980b9" CELLPADDING="0"></TD></TR>
+            <TR><TD ALIGN="CENTER" BORDER="0"><FONT COLOR="#2980b9"><I>Maus:</I></FONT> Primär losgelassen (Schwenken fertig)</TD></TR>
+        </TABLE>
+    >];
+}

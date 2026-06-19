@@ -35,6 +35,6 @@ public class PanningState implements EditorState {
 
     @Override
     public void handleMouseReleased(MouseEventData event, CanvasController context) {
-        context.setCurrentState(new IdleState());
+        context.reactivateCurrentTool();
     }
 }

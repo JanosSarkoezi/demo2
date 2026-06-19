@@ -11,10 +11,87 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 
-public class CreateConnectionState implements EditorState {
+public class CreateConnectionState extends AbstractEditorState {
     private UUID sourceObjectId = null;
     private final List<UUID> collectedWaypointIds = new ArrayList<>();
     private boolean connectionFinished = true;
+
+    public CreateConnectionState() {
+        // 1. Schritt: Startobjekt auswählen
+        pressedActions.add(new MouseAction(
+            MouseMatchers.all(
+                MouseMatchers.primaryButton(),
+                (e, ctx) -> sourceObjectId == null,
+                MouseMatchers.objectHit()
+            ),
+            (event, context) -> {
+                FmcObject hit = context.findObjectAt(event.worldX(), event.worldY());
+                if (hit != null && hit.type() != FmcType.WEGPUNKT) {
+                    sourceObjectId = hit.id();
+                    connectionFinished = false;
+
+                    context.getSelectedObjectIds().clear();
+                    context.getSelectedObjectIds().add(sourceObjectId);
+                    context.updateSelectionInView();
+
+                    System.out.println("Start-Objekt fuer Verbindung gewaehlt: " + sourceObjectId);
+                }
+            }
+        ));
+
+        // 2a. Schritt: Wenn bereits ein Startobjekt existiert und ins Leere geklickt wird -> Wegpunkt hinzufügen
+        pressedActions.add(new MouseAction(
+            MouseMatchers.all(
+                MouseMatchers.primaryButton(),
+                (e, ctx) -> sourceObjectId != null,
+                MouseMatchers.noObjectHit()
+            ),
+            (event, context) -> {
+                UUID wpId = UUID.randomUUID();
+                var wegpunkt = new FmcObject(wpId, FmcType.WEGPUNKT, event.worldX(), event.worldY(), 10, 10, CoreRegistry.WAYPOINT_LAYER_ID);
+
+                var cmd = new CreateObjectCommand(context.getRegistry(), wegpunkt);
+                context.getCommandHistory().executeCommand(cmd);
+
+                collectedWaypointIds.add(wpId);
+                System.out.println("Wegpunkt hinzugefuegt an: " + event.worldX() + ", " + event.worldY());
+            }
+        ));
+
+        // 2b. Schritt: Wenn bereits ein Startobjekt existiert und auf ein anderes Objekt geklickt wird -> Verbindung abschließen
+        pressedActions.add(new MouseAction(
+            MouseMatchers.all(
+                MouseMatchers.primaryButton(),
+                (e, ctx) -> sourceObjectId != null,
+                MouseMatchers.objectHit()
+            ),
+            (event, context) -> {
+                FmcObject hit = context.findObjectAt(event.worldX(), event.worldY());
+                if (hit != null && !hit.id().equals(sourceObjectId) && hit.type() != FmcType.WEGPUNKT) {
+                    var cmd = new CreateConnectionCommand(context.getRegistry(), sourceObjectId, hit.id(), collectedWaypointIds);
+                    
+                    cmd.execute();
+
+                    if (cmd.isSuccess()) {
+                        context.getCommandHistory().addExecutedCommand(cmd);
+                        System.out.println("Polygon-Verbindung erfolgreich via Command erstellt!");
+                        connectionFinished = true;
+
+                        context.getSelectedObjectIds().clear();
+                        context.updateSelectionInView();
+
+                        sourceObjectId = null;
+                        collectedWaypointIds.clear();
+
+                        context.reactivateCurrentTool();
+                    } else {
+                        System.out.println("Verbindung existiert bereits oder ist ungueltig! Raeume Wegpunkte auf...");
+                        cleanupCollectedWaypoints(context);
+                    }
+                }
+            }
+        ));
+    }
 
     @Override
     public void enterState(CanvasController context) {
@@ -28,7 +105,6 @@ public class CreateConnectionState implements EditorState {
             cleanupCollectedWaypoints(context);
         }
         
-        // Selektion aufheben beim Verlassen des States
         context.getSelectedObjectIds().clear();
         context.updateSelectionInView();
 
@@ -38,87 +114,14 @@ public class CreateConnectionState implements EditorState {
         }
     }
 
-    @Override
-    public void handleMousePressed(MouseEventData event, CanvasController context) {
-        FmcObject hit = context.findObjectAt(event.worldX(), event.worldY());
-
-        // 1. Schritt: Startobjekt auswählen
-        if (sourceObjectId == null) {
-            if (hit != null && hit.type() != FmcType.WEGPUNKT) {
-                sourceObjectId = hit.id();
-                connectionFinished = false;
-
-                // Visuelles Feedback: Start-Objekt selektieren (Highlight)
-                context.getSelectedObjectIds().clear();
-                context.getSelectedObjectIds().add(sourceObjectId);
-                context.updateSelectionInView();
-
-                System.out.println("Start-Objekt fuer Verbindung gewaehlt: " + sourceObjectId);
-            }
-            return;
-        }
-
-        // 2. Schritt: Wenn bereits ein Startobjekt existiert...
-        if (hit == null) {
-            // Klick ins Leere -> Gelben Wegpunkt erzeugen!
-            UUID wpId = UUID.randomUUID();
-            // Kleine Standardgröße für den Wegpunkt (z.B. 10x10)
-            var wegpunkt = new FmcObject(wpId, FmcType.WEGPUNKT, event.worldX(), event.worldY(), 10, 10, CoreRegistry.WAYPOINT_LAYER_ID);
-
-            // Per Command in die Registry einfügen (wichtig für Undo/Redo!)
-            var cmd = new CreateObjectCommand(context.getRegistry(), wegpunkt);
-            context.getCommandHistory().executeCommand(cmd);
-
-            // In unserer temporären Pfad-Liste merken
-            collectedWaypointIds.add(wpId);
-            System.out.println("Wegpunkt hinzugefuegt an: " + event.worldX() + ", " + event.worldY());
-
-        } else if (!hit.id().equals(sourceObjectId) && hit.type() != FmcType.WEGPUNKT) {
-            // Klick auf ein ANDERES valides FMC-Objekt -> Pfad abschließen!
-            var cmd = new CreateConnectionCommand(context.getRegistry(), sourceObjectId, hit.id(), collectedWaypointIds);
-            
-            // Erst ausführen, dann prüfen. Wenn es fehlschlägt, landet es NICHT in der History.
-            cmd.execute();
-
-            if (cmd.isSuccess()) {
-                context.getCommandHistory().addExecutedCommand(cmd);
-                System.out.println("Polygon-Verbindung erfolgreich via Command erstellt!");
-                connectionFinished = true;
-
-                // Selektion aufheben nach Erfolg
-                context.getSelectedObjectIds().clear();
-                context.updateSelectionInView();
-
-                // Reset für die nächste Verbindung im selben State
-                sourceObjectId = null;
-                collectedWaypointIds.clear();
-            } else {
-                System.out.println("Verbindung existiert bereits oder ist ungueltig! Raeume Wegpunkte auf...");
-                cleanupCollectedWaypoints(context);
-            }
-        }
-    }
-
-    @Override
-    public void handleMouseDragged(MouseEventData event, CanvasController context) {
-    }
-
-    @Override
-    public void handleMouseReleased(MouseEventData event, CanvasController context) {
-    }
-
     private void cleanupCollectedWaypoints(CanvasController context) {
-        // Rückgängig machen der Wegpunkt-Erstellungen über die CommandHistory,
-        // damit der Undo-Stack sauber bleibt.
         int count = collectedWaypointIds.size();
         for (int i = 0; i < count; i++) {
             context.getCommandHistory().undo();
         }
         
-        // Da diese Wegpunkte verworfen wurden, löschen wir sie auch aus dem Redo-Stack
         context.getCommandHistory().clearRedoStack();
 
-        // Highlight entfernen
         if (sourceObjectId != null) {
             context.getSelectedObjectIds().remove(sourceObjectId);
             context.updateSelectionInView();

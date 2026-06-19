@@ -2,7 +2,11 @@ package de.fmc.editor.controller;
 
 import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.model.FmcObject;
+import de.fmc.editor.core.model.FmcType;
+import de.fmc.editor.state.CreateConnectionState;
+import de.fmc.editor.state.CreateState;
 import de.fmc.editor.state.EditorState;
+import de.fmc.editor.state.IdleState;
 import de.fmc.editor.state.MouseEventData;
 import de.fmc.editor.view.GraphView;
 import de.fmc.editor.view.ViewMapper;
@@ -17,6 +21,7 @@ public class CanvasController {
     @FXML
     private GraphView drawingPane;
 
+    private Tool activeTool;
     private CoreRegistry registry;
     private ToolbarController toolbarController;
     private ViewMapper viewMapper;
@@ -44,10 +49,34 @@ public class CanvasController {
         this.viewMapper = viewMapper;
     }
 
+    private void applyStateForTool(Tool tool) {
+        switch (tool) {
+            case CIRCLE_CREATE -> setCurrentState(new CreateState(FmcType.KREIS));
+            case RECTANGLE_CREATE -> setCurrentState(new CreateState(FmcType.QUADRAT));
+            case CONNECTION_CREATE -> setCurrentState(new CreateConnectionState());
+            case SELECT -> setCurrentState(new IdleState());
+        }
+    }
+
+    public void setActiveTool(Tool tool) {
+        this.activeTool = tool; // Setzt bei normalem Klick das Tool
+        applyStateForTool(tool);
+    }
+
+    public void reactivateCurrentTool() {
+        applyStateForTool(this.activeTool); // Reaktiviert nach dem Draggen
+    }
+
     public void setCurrentState(EditorState state) {
         if (this.currentState != null) {
             this.currentState.exitState(this);
         }
+        // --- NEU: Logging des State-Wechsels ---
+        System.out.println("🔄 State-Wechsel: "
+                + (this.currentState != null ? this.currentState.getClass().getSimpleName() : "null")
+                + " → "
+                + (state != null ? state.getClass().getSimpleName() : "null"));
+        // ---------------------------------------
         this.currentState = state;
         if (this.currentState != null) {
             this.currentState.enterState(this);

@@ -1,6 +1,7 @@
 package de.fmc.editor.controller;
 
 import de.fmc.editor.core.CoreRegistry;
+import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.view.ViewMapper;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
@@ -33,7 +34,7 @@ public class MainController {
         
         // Da der Kreis standardmäßig in der Toolbar selektiert ist (FXML),
         // setzen wir auch den passenden Startzustand.
-        canvasController.setCurrentState(new de.fmc.editor.state.CreateState());
+        canvasController.setActiveTool(Tool.CIRCLE_CREATE);
         
         // Den ViewMapper hier initialisieren, damit er sicher die Pane vom CanvasController nutzt
         this.viewMapper = new ViewMapper(canvasController.getDrawingPane(), registry);

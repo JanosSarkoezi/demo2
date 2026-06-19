@@ -71,27 +71,27 @@ public class ToolbarController {
     @FXML
     public void onCircleClick(ActionEvent event) {
         if (circleButton.isSelected()) {
-            canvasController.setCurrentState(new CreateState());
+            canvasController.setActiveTool(Tool.CIRCLE_CREATE);
         } else {
-            canvasController.setCurrentState(new IdleState());
+            canvasController.setActiveTool(Tool.SELECT);
         }
     }
 
     @FXML
     public void onRectClick(ActionEvent event) {
         if (rectButton.isSelected()) {
-            canvasController.setCurrentState(new CreateState());
+            canvasController.setActiveTool(Tool.RECTANGLE_CREATE);
         } else {
-            canvasController.setCurrentState(new IdleState());
+            canvasController.setActiveTool(Tool.SELECT);
         }
     }
 
     @FXML
     public void onConnClick(ActionEvent event) {
         if (connectButton.isSelected()) {
-            canvasController.setCurrentState(new CreateConnectionState());
+            canvasController.setActiveTool(Tool.CONNECTION_CREATE);
         } else {
-            canvasController.setCurrentState(new IdleState());
+            canvasController.setActiveTool(Tool.SELECT);
         }
     }
 
