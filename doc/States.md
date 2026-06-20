@@ -1,93 +1,51 @@
-  Hier ist der detaillierte Überblick über das Zusammenspiel zwischen der Toolbar, dem CanvasController und den verschiedenen EditorStates bei Benutzerinteraktionen wie Klicks,
-  Doppelklicks und Drag-and-Drop.
-  ──────
-  ### 1. Das Zusammenspiel zwischen Toolbar und Zustand
+Das ist ein hervorragender Ansatz! Eine solche Zustandstabelle (State-Transition-Table) ist genau das richtige Werkzeug, um die Interaktionslogik deines FMC-Editors präzise abzubilden.
 
-  Die Buttons der Toolbar steuern primär den Einstiegszustand des Editors, indem sie das Feld  currentState  im CanvasController.java setzen.
+Aus deinem Quellcode lässt sich entnehmen, dass die Übergänge in zwei Bereichen definiert sind:
 
-  Wenn in der Toolbar kein spezifisches Erstellungswerkzeug aktiv ist, befindet sich der Editor im  IdleState  (Standardmodus).
-  ──────
-  ### 2. Die Zustände und ihre Übergänge im Detail
+1. **Zustandsebene (`EditorState`):** Gesteuert über Mausklicks und Drag&Drop im Canvas (definiert in den Klassen im `state`-Paket).
+2. **Globale Ebene (`MainController`):** Gesteuert über Tastatur-Shortcuts (Accelerators).
 
-  #### A. IdleState (Standard-Zustand)
+Hier ist die detaillierte Zustandstabelle basierend auf deiner Software-Architektur:
 
-  Der  IdleState  ist der Ausgangspunkt für Selektion, Verschieben, Skalieren und Panning.
+### Zustandstabelle (State Transition Table)
 
-  • Einfachklick auf ein Objekt:
-      • Wählt das Objekt aus (mit gedrückter  STRG/CTRL -Taste wird die Auswahl erweitert/reduziert, andernfalls wird die vorherige Auswahl geleert).
-      • Wechselt bei gedrückter Maustaste sofort in den  DragObjectsState , um ein Verschieben vorzubereiten.
-  • Doppelklick auf ein Objekt:
-      • Wechselt in den  ResizeState  für dieses Objekt. Die UI zeichnet nun Anfasser (Handles) um die Box/den Kreis.
-  • Einfachklick auf eine Verbindungslinie:
-      • Blendet temporär den Wegpunkt-Layer (Layer ID  1 ) ein, damit eventuell vorhandene Wegpunkte sichtbar und editierbar werden.
-  • Doppelklick auf eine Verbindungslinie:
-      • Erstellt an der Klick-Position sofort einen neuen Wegpunkt (Typ  FmcType.WEGPUNKT ) auf der Verbindung via  AddWaypointCommand . Dieser Wegpunkt wird direkt selektiert.
-  • Klick ins Leere:
-      • Ohne STRG: Löscht alle aktiven Selektionen und wechselt in den  PanningState  (Verschieben des sichtbaren Canvas-Ausschnitts beim Ziehen).
-      • Mit STRG: Startet eine Rechteck-Auswahl und wechselt in den  BoxSelectionState  (Gummiband-Rahmen).
+| Startzustand (`startState`) | Tastatur (Shortcuts / Keys) | Maus (Klicks / Aktionen) | Endzustand (`endState`) | Beschreibung / Ausgelöste Aktion |
+| --- | --- | --- | --- | --- |
+| **IdleState** | *Keine* | Primäre Taste, Doppel-Klick, auf einem Objekt | **ResizeState** | Wechselt in den Modus zur Größenänderung des Objekts. |
+| **IdleState** | STRG (gedrückt halten) | Primäre Taste, Klick (1x), ins Leere | **BoxSelectionState** | Startet die Rahmenauswahl (Gummiband-Selektion). |
+| **IdleState** | *Keine* | Primäre Taste, Klick (1x), auf einem Objekt | **DragObjectsState** | Wählt das Objekt aus (bzw. erweitert/ändert Selektion) und bereitet das Verschieben vor. |
+| **IdleState** | *Keine* | Primäre Taste, Klick (1x), ins Leere | **PanningState** | Leert die Selektion und startet das Verschieben der gesamten Canvas-Ansicht. |
+| **IdleState** | *Keine* | Primäre Taste, Doppel-Klick, auf einer Verbindungslinie | **IdleState** *(bleibt)* | Fügt an der geklickten Stelle einen neuen Wegpunkt (`WEGPUNKT`) in die Verbindung ein. |
+| **IdleState** | *Keine* | Primäre Taste, Klick (1x), auf einer Verbindungslinie | **IdleState** *(bleibt)* | Blendet die Wegpunkte-Ebene ein. |
+| **CreateState** *(Circle/Rect)* | *Keine* | Primäre Taste, Klick (1x), ins Leere | **CreateState** *(bleibt)* | Platziert ein neues Objekt (Kreis/Quadrat) im Canvas und reaktiviert das Tool. |
+| **DragObjectsState** | *Keine* | Primäre Taste, Maus bewegt (Dragged) | **DragObjectsState** *(bleibt)* | Verschiebt alle ausgewählten Objekte (ggf. mit Raster-Einrastung / Snap-to-Grid). |
+| **DragObjectsState** | *Keine* | Primäre Taste losgelassen (Released) | **CreateState** / **CreateConnectionState** / **IdleState** *(Aktives Tool)* | Schließt das Verschieben ab, fügt den `MoveMultipleObjectsCommand` zur History hinzu und stellt das zuvor aktive Werkzeug wieder her. |
+| **ResizeState** | *Keine* | Primäre Taste, Maus bewegt (Dragged) auf Handle | **ResizeState** *(bleibt)* | Ändert die Breite/Höhe des Objekts basierend auf dem aktiven Anfasspunkt (Handle). |
+| **ResizeState** | *Keine* | Primäre Taste losgelassen (Released) | **ResizeState** *(bleibt)* | Beendet das Vergrößern/Verkleinern und speichert die Änderung über ein Command. |
+| **ResizeState** | *Keine* | Primäre Taste, Klick, auf ein anderes Objekt | **ResizeState** *(neues Ziel)* | Wechselt den Fokus der Größenänderung direkt auf das andere Objekt. |
+| **ResizeState** | *Keine* | Primäre Taste, Klick, ins Leere / gleiches Objekt | **CreateState** / **CreateConnectionState** / **IdleState** *(Aktives Tool)* | Bricht den Resize-Modus ab und stellt das Standard-Tool wieder her. |
+| **BoxSelectionState** | *Keine* | Primäre Taste, Maus bewegt (Dragged) | **BoxSelectionState** *(bleibt)* | Aktualisiert die Dimensionen des gezeichneten Auswahlrechtecks im UI. |
+| **BoxSelectionState** | *Keine* | Primäre Taste losgelassen (Released) | **IdleState** | Fügt alle Objekte innerhalb des Rahmens zur Selektion hinzu und kehrt zu Idle zurück. |
+| **PanningState** | *Keine* | Primäre Taste, Maus bewegt (Dragged) | **PanningState** *(bleibt)* | Verschiebt die Kamera (`world`-Gruppe) anhand der Mausbewegung (Szenen-Koordinaten). |
+| **PanningState** | *Keine* | Primäre Taste losgelassen (Released) | **CreateState** / **CreateConnectionState** / **IdleState** *(Aktives Tool)* | Beendet das Kameraschwenken und stellt das aktive Werkzeug wieder her. |
+| **CreateConnectionState** | *Keine* | Primäre Taste, Klick (1x), auf Objekt (wenn noch kein Startobjekt gewählt) | **CreateConnectionState** *(Start fixiert)* | Registriert das getroffene Objekt als `sourceObjectId` (Verbindungsausgang). |
+| **CreateConnectionState** | *Keine* | Primäre Taste, Klick (1x), ins Leere (wenn Startobjekt bereits gewählt) | **CreateConnectionState** *(Wegpunkt hinzugefügt)* | Erstellt dynamisch einen neuen Zwischen-Wegpunkt im Raum. |
+| **CreateConnectionState** | *Keine* | Primäre Taste, Klick (1x), auf ein anderes Objekt (wenn Startobjekt gewählt) | **CreateState** / **CreateConnectionState** / **IdleState** *(Aktives Tool)* | Erstellt die finale Verbindung via `CreateConnectionCommand`, leert temporäre Daten und reaktiviert das Tool. |
 
-  ──────
-  #### B. CreateState (Objekt-Erstellung)
+---
 
-  Aktiviert, wenn in der Toolbar der Kreis- oder Rechteck-Button gedrückt ist.
+### Globale Tastatur-Zustandsänderungen (Shortcuts)
 
-  • Mausklick auf dem Canvas:
-      • Erzeugt an der Klickstelle ein Objekt des ausgewählten Typs ( CreateObjectCommand ).
-      • Sticky-Logik der Toolbar:
-          • Ist die Checkbox "Sticky" in der Toolbar aktiv, bleibt der Editor im  CreateState  – du kannst direkt weitere Objekte platzieren.
-          • Ist "Sticky" deaktiviert, wechselt der Editor nach der Erstellung des ersten Objekts automatisch zurück in den  IdleState  und der Toolbar-Button wird wieder abgewählt.
+Diese Übergänge sind im `MainController` registriert und können aus *jedem* Zustand heraus getriggert werden, da sie als globale Accelerator-Shortcuts auf der JavaFX-Scene liegen:
 
+| Zustand | Tastatur (Shortcut) | Maus | Folge-Aktion / Zustandsauswirkung |
+| --- | --- | --- | --- |
+| **Jeder Zustand** | `STRG + Z` | *Keine* | Führt im `CommandHistory` ein **Undo** (Rückgängig) aus. |
+| **Jeder Zustand** | `STRG + SHIFT + Z` | *Keine* | Führt im `CommandHistory` ein **Redo** (Wiederholen) aus. |
+| **Jeder Zustand** | `ENTF` (DELETE) | *Keine* | Löscht alle aktuell ausgewählten Objekte über ein Command. |
+| **Jeder Zustand** | `RÜCKTASTE` (BACKSPACE) | *Keine* | Gleiche Funktion wie `DELETE` (Löschen der Auswahl). |
+| **Jeder Zustand** | *Keine* | Mittleres Mausrad (Scrollen) | Löst das Zoom-Event auf dem Canvas aus (`drawingPane.handleZoom`). |
 
-  ──────
-  #### C. CreateConnectionState (Verbindung erstellen)
+### Besonderheit deines Codes (Das "Reactivate"-Muster):
 
-  Aktiviert, wenn in der Toolbar der Verbindungs-Button ("Connect") gedrückt ist.
-
-  • Maus gedrückt halten auf Objekt A, ziehen zu Objekt B und loslassen (Drag and Drop):
-      • Während des Ziehens wird eine temporäre Linie gezeichnet.
-      • Beim Loslassen über Objekt B wird geprüft, ob die Verbindung zulässig ist (z. B. keine Kreis-zu-Kreis-Verbindung im Kern-Modell).
-      • Ist sie zulässig, wird das  CreateConnectionCommand  ausgeführt.
-      • Je nach "Sticky"-Checkbox verbleibt das System im Verbindungs-Modus oder springt zurück in den  IdleState .
-
-  ──────
-  #### D. DragObjectsState (Verschieben per Drag & Drop)
-
-  Wird aktiviert, wenn im  IdleState  auf ein selektiertes Objekt gedrückt und die Maus gezogen wird.
-
-  • Mouse Dragged (Ziehen):
-      • Aktualisiert die Position der verschobenen Objekte in Echtzeit in der  CoreRegistry .
-      • Toolbar-Einfluss: Hierbei wird geprüft, ob die Checkbox "Snap to Grid" aktiv ist. Falls ja, werden die Koordinaten an das Gitternetz angepasst.
-      • Wichtig gegen Stack-Verstopfung: Während des Ziehens werden keine Commands auf den Undo-Stack gelegt (reines Preview-Update).
-  • Mouse Released (Loslassen):
-      • Führt das finale  MoveObjectCommand  (oder bei mehreren Objekten  MoveMultipleObjectsCommand ) aus, wodurch die Bewegung finalisiert und ein Undo/Redo-Punkt erzeugt wird.
-      • Wechselt zurück in den  IdleState .
-
-  ──────
-  #### E. ResizeState (Skalieren / Größenänderung)
-
-  Wird durch einen Doppelklick auf ein Objekt im  IdleState  betreten.
-
-  • Ziehen an einem Handle (Anfasser):
-      • Verändert temporär die Ausdehnung des Objekts in der Vorschau.
-  • Maus loslassen:
-      • Führt das finale  ResizeObjectCommand  aus und speichert es in der History.
-  • Klick ins Leere:
-      • Verlässt den Skalierungsmodus und wechselt zurück in den  IdleState  (die Skalierungs-Handles werden ausgeblendet).
-
-  ──────
-  ### Zusammenfassung der Übergänge (Zustandsautomat)
-
-    graph TD
-        IdleState -- "Toolbar Click (Circle/Rect)" --> CreateState
-        IdleState -- "Toolbar Click (Connect)" --> CreateConnectionState
-        IdleState -- "Double Click Object" --> ResizeState
-        IdleState -- "Mouse Drag Object" --> DragObjectsState
-        IdleState -- "Mouse Drag Canvas (no Ctrl)" --> PanningState
-        IdleState -- "Mouse Drag Canvas (Ctrl)" --> BoxSelectionState
-
-        CreateState -- "Click & !Sticky" --> IdleState
-        CreateConnectionState -- "Release on target & !Sticky" --> IdleState
-        DragObjectsState -- "Mouse Released" --> IdleState
-        ResizeState -- "Click Workspace" --> IdleState
-        PanningState -- "Mouse Released" --> IdleState
-        BoxSelectionState -- "Mouse Released" --> IdleState
+Wie man im Code sieht (z.B. in `CanvasController.reactivateCurrentTool()`), merkt sich die Applikation das in der Toolbar ausgewählte Werkzeug (`SELECT`, `CIRCLE_CREATE`, etc.). Sobald temporäre Zustände wie `DragObjectsState`, `ResizeState` oder `PanningState` durch das Loslassen der Maustaste beendet werden, springt das System automatisch wieder in den Zustand zurück, der dem aktuellen Toolbar-Werkzeug entspricht (entweder `IdleState`, `CreateState` oder `CreateConnectionState`).
