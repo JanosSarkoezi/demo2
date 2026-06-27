@@ -7,12 +7,14 @@ public class PanningState implements EditorState {
     private final double startTranslateY;
     private final double startMouseX;
     private final double startMouseY;
+    private boolean isPanning = false;
 
-    public PanningState(MouseEventData event, CanvasController context) {
+    public PanningState(InteractionEventData event, CanvasController context) {
         this.startMouseX = event.sceneX();
         this.startMouseY = event.sceneY();
         this.startTranslateX = context.getDrawingPane().getWorld().getTranslateX();
         this.startTranslateY = context.getDrawingPane().getWorld().getTranslateY();
+        this.isPanning = true;
     }
 
     @Override
@@ -22,19 +24,19 @@ public class PanningState implements EditorState {
     public void exitState(CanvasController context) {}
 
     @Override
-    public void handleMousePressed(MouseEventData event, CanvasController context) {}
+    public void handleInput(InteractionEventData event, CanvasController context) {
+        if (event.isPrimaryButtonDown() && isPanning && event.activeKey().isEmpty()) {
+            double deltaX = event.sceneX() - startMouseX;
+            double deltaY = event.sceneY() - startMouseY;
 
-    @Override
-    public void handleMouseDragged(MouseEventData event, CanvasController context) {
-        double deltaX = event.sceneX() - startMouseX;
-        double deltaY = event.sceneY() - startMouseY;
+            context.getDrawingPane().getWorld().setTranslateX(startTranslateX + deltaX);
+            context.getDrawingPane().getWorld().setTranslateY(startTranslateY + deltaY);
+            return;
+        }
 
-        context.getDrawingPane().getWorld().setTranslateX(startTranslateX + deltaX);
-        context.getDrawingPane().getWorld().setTranslateY(startTranslateY + deltaY);
-    }
-
-    @Override
-    public void handleMouseReleased(MouseEventData event, CanvasController context) {
-        context.reactivateCurrentTool();
+        if (!event.isPrimaryButtonDown() && isPanning) {
+            isPanning = false;
+            context.reactivateCurrentTool();
+        }
     }
 }

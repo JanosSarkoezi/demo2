@@ -6,17 +6,19 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-public class DragObjectsState extends AbstractEditorState {
+public class DragObjectsState implements EditorState {
     private final UUID primaryDraggedId;
     private final Map<UUID, MoveMultipleObjectsCommand.Position> initialPositions = new HashMap<>();
     private final double startMouseWorldX;
     private final double startMouseWorldY;
     private boolean hasMoved = false;
+    private boolean isDragging = false;
 
-    public DragObjectsState(UUID primaryId, MouseEventData event, CanvasController context) {
+    public DragObjectsState(UUID primaryId, InteractionEventData event, CanvasController context) {
         this.primaryDraggedId = primaryId;
         this.startMouseWorldX = event.worldX();
         this.startMouseWorldY = event.worldY();
+        this.isDragging = true;
         
         var selectedIds = context.getSelectedObjectIds();
         for (UUID id : selectedIds) {
@@ -34,57 +36,62 @@ public class DragObjectsState extends AbstractEditorState {
                 initialPositions.put(primaryId, new MoveMultipleObjectsCommand.Position(hit.x(), hit.y()));
             }
         }
+    }
 
-        // Mouse Dragged: Update position in preview (snap to grid if active)
-        draggedActions.add(new MouseAction(
-            MouseMatchers.alwaysTrue(),
-            (ev, ctx) -> {
-                if (initialPositions.isEmpty()) return;
-                
-                hasMoved = true;
-                double deltaX = ev.worldX() - startMouseWorldX;
-                double deltaY = ev.worldY() - startMouseWorldY;
+    @Override
+    public void enterState(CanvasController context) {}
 
-                if (ctx.getToolbarController().isSnapToGrid()) {
-                    double primaryInitialX = initialPositions.get(primaryDraggedId).x();
-                    double primaryInitialY = initialPositions.get(primaryDraggedId).y();
-                    double targetX = primaryInitialX + deltaX;
-                    double targetY = primaryInitialY + deltaY;
+    @Override
+    public void exitState(CanvasController context) {}
 
-                    int gridSize = 20;
-                    double snappedX = Math.round(targetX / gridSize) * gridSize;
-                    double snappedY = Math.round(targetY / gridSize) * gridSize;
+    @Override
+    public void handleInput(InteractionEventData event, CanvasController context) {
+        // Drag
+        if (event.isPrimaryButtonDown() && isDragging && event.activeKey().isEmpty()) {
+            if (initialPositions.isEmpty()) return;
+            
+            hasMoved = true;
+            double deltaX = event.worldX() - startMouseWorldX;
+            double deltaY = event.worldY() - startMouseWorldY;
 
-                    deltaX = snappedX - primaryInitialX;
-                    deltaY = snappedY - primaryInitialY;
-                }
+            if (context.getToolbarController().isSnapToGrid()) {
+                double primaryInitialX = initialPositions.get(primaryDraggedId).x();
+                double primaryInitialY = initialPositions.get(primaryDraggedId).y();
+                double targetX = primaryInitialX + deltaX;
+                double targetY = primaryInitialY + deltaY;
 
-                for (var entry : initialPositions.entrySet()) {
-                    double newX = entry.getValue().x() + deltaX;
-                    double newY = entry.getValue().y() + deltaY;
-                    ctx.getRegistry().moveObject(entry.getKey(), newX, newY);
-                }
+                int gridSize = 20;
+                double snappedX = Math.round(targetX / gridSize) * gridSize;
+                double snappedY = Math.round(targetY / gridSize) * gridSize;
+
+                deltaX = snappedX - primaryInitialX;
+                deltaY = snappedY - primaryInitialY;
             }
-        ));
 
-        // Mouse Released: Execute Move Command and return to Idle
-        releasedActions.add(new MouseAction(
-            MouseMatchers.alwaysTrue(),
-            (ev, ctx) -> {
-                if (hasMoved) {
-                    Map<UUID, MoveMultipleObjectsCommand.Position> currentPositions = new HashMap<>();
-                    for (UUID id : initialPositions.keySet()) {
-                        ctx.getRegistry().getObjects().stream()
-                            .filter(obj -> obj.id().equals(id))
-                            .findFirst()
-                            .ifPresent(obj -> currentPositions.put(id, new MoveMultipleObjectsCommand.Position(obj.x(), obj.y())));
-                    }
-
-                    var cmd = new MoveMultipleObjectsCommand(ctx.getRegistry(), initialPositions, currentPositions);
-                    ctx.getCommandHistory().addExecutedCommand(cmd);
-                }
-                ctx.reactivateCurrentTool();
+            for (var entry : initialPositions.entrySet()) {
+                double newX = entry.getValue().x() + deltaX;
+                double newY = entry.getValue().y() + deltaY;
+                context.getRegistry().moveObject(entry.getKey(), newX, newY);
             }
-        ));
+            return;
+        }
+
+        // Release
+        if (!event.isPrimaryButtonDown() && isDragging) {
+            isDragging = false;
+            if (hasMoved) {
+                Map<UUID, MoveMultipleObjectsCommand.Position> currentPositions = new HashMap<>();
+                for (UUID id : initialPositions.keySet()) {
+                    context.getRegistry().getObjects().stream()
+                        .filter(obj -> obj.id().equals(id))
+                        .findFirst()
+                        .ifPresent(obj -> currentPositions.put(id, new MoveMultipleObjectsCommand.Position(obj.x(), obj.y())));
+                }
+
+                var cmd = new MoveMultipleObjectsCommand(context.getRegistry(), initialPositions, currentPositions);
+                context.getCommandHistory().addExecutedCommand(cmd);
+            }
+            context.reactivateCurrentTool();
+        }
     }
 }

@@ -2,7 +2,6 @@ package de.fmc.editor.controller;
 
 import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.state.CreateConnectionState;
-import de.fmc.editor.state.CreateState;
 import de.fmc.editor.state.IdleState;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;

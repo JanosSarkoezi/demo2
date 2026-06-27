@@ -6,9 +6,10 @@ import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.core.model.Handle;
 import de.fmc.editor.core.model.HandleType;
 import de.fmc.editor.view.ViewMapper;
+import javafx.scene.input.KeyCode;
 import java.util.UUID;
 
-public class ResizeState extends AbstractEditorState {
+public class ResizeState implements EditorState {
     private final UUID targetObjectId;
     private HandleType activeHandle = null;
     private double lastMouseX;
@@ -18,28 +19,46 @@ public class ResizeState extends AbstractEditorState {
     private double startH;
     private double lastKnownW;
     private double lastKnownH;
+    private boolean isResizing = false;
 
     public ResizeState(UUID targetObjectId) {
         this.targetObjectId = targetObjectId;
+    }
 
-        // --- PRESSED ACTIONS ---
+    @Override
+    public void enterState(CanvasController context) {
+        System.out.println("Entering ResizeState for: " + targetObjectId);
+        FmcObject obj = getTargetObject(context);
+        if (obj != null && context.getViewMapper() != null) {
+            context.getViewMapper().setSelectedObject(targetObjectId, ViewMapper.getHandles(obj));
+        }
+    }
 
-        // Failsafe: Target object no longer exists
-        pressedActions.add(new MouseAction(
-            (e, ctx) -> getTargetObject(ctx) == null,
-            (event, context) -> context.reactivateCurrentTool()
-        ));
+    @Override
+    public void exitState(CanvasController context) {
+        // Handles are cleared in CanvasController.setCurrentState when leaving ResizeState
+    }
 
-        // Clicked on a resize handle
-        pressedActions.add(new MouseAction(
-            (e, ctx) -> {
-                FmcObject obj = getTargetObject(ctx);
-                return obj != null && findHandleAt(obj, e.worldX(), e.worldY()) != null;
-            },
-            (event, context) -> {
-                FmcObject obj = getTargetObject(context);
-                if (obj != null) {
-                    activeHandle = findHandleAt(obj, event.worldX(), event.worldY());
+    @Override
+    public void handleInput(InteractionEventData event, CanvasController context) {
+        // ESC -> cancel or return to tool
+        if (event.activeKey().isPresent() && event.activeKey().get() == KeyCode.ESCAPE) {
+            context.reactivateCurrentTool();
+            return;
+        }
+
+        FmcObject obj = getTargetObject(context);
+        if (obj == null) {
+            context.reactivateCurrentTool();
+            return;
+        }
+
+        // Press / Drag initiation
+        if (event.isPrimaryButtonDown() && event.activeKey().isEmpty()) {
+            if (!isResizing) {
+                HandleType handle = findHandleAt(obj, event.worldX(), event.worldY());
+                if (handle != null) {
+                    activeHandle = handle;
                     lastMouseX = event.worldX();
                     lastMouseY = event.worldY();
                     
@@ -47,48 +66,26 @@ public class ResizeState extends AbstractEditorState {
                     startH = obj.height();
                     lastKnownW = obj.width();
                     lastKnownH = obj.height();
+                    isResizing = true;
+                } else {
+                    // Clicked elsewhere
+                    FmcObject hit = context.findObjectAt(event.worldX(), event.worldY());
+                    if (hit != null) {
+                        if (hit.id().equals(targetObjectId)) {
+                            // Clicked on target (not handle) -> back to tool, let it handle the event (drag)
+                            context.reactivateCurrentTool();
+                            context.getCurrentState().handleInput(event, context);
+                        } else {
+                            // Clicked on different object -> Resize that instead
+                            context.setCurrentState(new ResizeState(hit.id()));
+                        }
+                    } else {
+                        // Clicked into empty space -> Cancel resize and go to standard tool
+                        context.reactivateCurrentTool();
+                    }
                 }
-            }
-        ));
-
-        // Clicked on the same object (not on handle) -> Switch to Idle and let it process the event (e.g. for drag)
-        pressedActions.add(new MouseAction(
-            (e, ctx) -> {
-                FmcObject hit = ctx.findObjectAt(e.worldX(), e.worldY());
-                return hit != null && hit.id().equals(targetObjectId);
-            },
-            (event, context) -> {
-                context.reactivateCurrentTool();
-                context.getCurrentState().handleMousePressed(event, context);
-            }
-        ));
-
-        // Clicked on a different object -> Transition to ResizeState for that object
-        pressedActions.add(new MouseAction(
-            (e, ctx) -> {
-                FmcObject hit = ctx.findObjectAt(e.worldX(), e.worldY());
-                return hit != null && !hit.id().equals(targetObjectId);
-            },
-            (event, context) -> {
-                ResizeState nextState = new ResizeState(context.findObjectAt(event.worldX(), event.worldY()).id());
-                context.setCurrentState(nextState);
-            }
-        ));
-
-        // Clicked into empty space -> Cancel resize and go to Idle
-        pressedActions.add(new MouseAction(
-            MouseMatchers.alwaysTrue(),
-            (event, context) -> context.reactivateCurrentTool()
-        ));
-
-
-        // --- DRAGGED ACTIONS ---
-        draggedActions.add(new MouseAction(
-            (e, ctx) -> activeHandle != null,
-            (event, context) -> {
-                FmcObject obj = getTargetObject(context);
-                if (obj == null) return;
-
+            } else {
+                // Dragging
                 double deltaX = event.worldX() - lastMouseX;
                 double deltaY = event.worldY() - lastMouseY;
 
@@ -132,32 +129,21 @@ public class ResizeState extends AbstractEditorState {
                 lastMouseX = event.worldX();
                 lastMouseY = event.worldY();
             }
-        ));
+            return;
+        }
 
-
-        // --- RELEASED ACTIONS ---
-        releasedActions.add(new MouseAction(
-            MouseMatchers.alwaysTrue(),
-            (event, context) -> {
-                if (activeHandle != null) {
-                    if (startW != lastKnownW || startH != lastKnownH) {
-                        var cmd = new de.fmc.editor.core.command.ResizeObjectCommand(
-                            context.getRegistry(), targetObjectId, startW, startH, lastKnownW, lastKnownH
-                        );
-                        context.getCommandHistory().executeCommand(cmd);
-                    }
+        // Release
+        if (!event.isPrimaryButtonDown() && isResizing) {
+            isResizing = false;
+            if (activeHandle != null) {
+                if (startW != lastKnownW || startH != lastKnownH) {
+                    var cmd = new de.fmc.editor.core.command.ResizeObjectCommand(
+                        context.getRegistry(), targetObjectId, startW, startH, lastKnownW, lastKnownH
+                    );
+                    context.getCommandHistory().executeCommand(cmd);
                 }
-                activeHandle = null;
             }
-        ));
-    }
-
-    @Override
-    public void enterState(CanvasController context) {
-        System.out.println("Entering ResizeState for: " + targetObjectId);
-        FmcObject obj = getTargetObject(context);
-        if (obj != null && context.getViewMapper() != null) {
-            context.getViewMapper().setSelectedObject(targetObjectId, ViewMapper.getHandles(obj));
+            activeHandle = null;
         }
     }
 

@@ -4,16 +4,17 @@ import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.state.CreateConnectionState;
-import de.fmc.editor.state.CreateState;
+import de.fmc.editor.state.CreateObjectState;
 import de.fmc.editor.state.EditorState;
 import de.fmc.editor.state.IdleState;
-import de.fmc.editor.state.MouseEventData;
+import de.fmc.editor.state.InteractionEventData;
 import de.fmc.editor.view.GraphView;
 import de.fmc.editor.view.ViewMapper;
 import javafx.fxml.FXML;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 
+import java.util.Optional;
 import java.util.UUID;
 
 public class CanvasController {
@@ -51,8 +52,8 @@ public class CanvasController {
 
     private void applyStateForTool(Tool tool) {
         switch (tool) {
-            case CIRCLE_CREATE -> setCurrentState(new CreateState(FmcType.KREIS));
-            case RECTANGLE_CREATE -> setCurrentState(new CreateState(FmcType.QUADRAT));
+            case CIRCLE_CREATE -> setCurrentState(new CreateObjectState(FmcType.KREIS));
+            case RECTANGLE_CREATE -> setCurrentState(new CreateObjectState(FmcType.QUADRAT));
             case CONNECTION_CREATE -> setCurrentState(new CreateConnectionState());
             case SELECT -> setCurrentState(new IdleState());
         }
@@ -115,40 +116,55 @@ public class CanvasController {
     @FXML
     public void onMousePressed(MouseEvent event) {
         javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
-        MouseEventData data = new MouseEventData(
+        InteractionEventData data = new InteractionEventData(
             worldPos.getX(), worldPos.getY(),
             event.getSceneX(), event.getSceneY(),
             event.getClickCount(),
             event.isPrimaryButtonDown(),
-            event.isControlDown()
+            event.isSecondaryButtonDown(),
+            event.isMiddleButtonDown(),
+            event.isControlDown(),
+            event.isShiftDown(),
+            event.isAltDown(),
+            Optional.empty()
         );
-        currentState.handleMousePressed(data, this);
+        currentState.handleInput(data, this);
     }
 
     @FXML
     public void onMouseDragged(MouseEvent event) {
         javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
-        MouseEventData data = new MouseEventData(
+        InteractionEventData data = new InteractionEventData(
             worldPos.getX(), worldPos.getY(),
             event.getSceneX(), event.getSceneY(),
             event.getClickCount(),
             event.isPrimaryButtonDown(),
-            event.isControlDown()
+            event.isSecondaryButtonDown(),
+            event.isMiddleButtonDown(),
+            event.isControlDown(),
+            event.isShiftDown(),
+            event.isAltDown(),
+            Optional.empty()
         );
-        currentState.handleMouseDragged(data, this);
+        currentState.handleInput(data, this);
     }
 
     @FXML
     public void onMouseReleased(MouseEvent event) {
         javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
-        MouseEventData data = new MouseEventData(
+        InteractionEventData data = new InteractionEventData(
             worldPos.getX(), worldPos.getY(),
             event.getSceneX(), event.getSceneY(),
             event.getClickCount(),
             event.isPrimaryButtonDown(),
-            event.isControlDown()
+            event.isSecondaryButtonDown(),
+            event.isMiddleButtonDown(),
+            event.isControlDown(),
+            event.isShiftDown(),
+            event.isAltDown(),
+            Optional.empty()
         );
-        currentState.handleMouseReleased(data, this);
+        currentState.handleInput(data, this);
     }
 
     @FXML

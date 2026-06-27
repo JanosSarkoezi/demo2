@@ -1,3 +1,4 @@
+agy --conversation=41dd1963-59d3-4558-95c4-3af0100f83cf
 # FMC Editor Projekt-Richtlinien & Architektur-Dokumentation
 
 Dieses Dokument beschreibt die Kernarchitektur, die Design Patterns und die
