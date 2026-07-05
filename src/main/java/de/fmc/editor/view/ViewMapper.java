@@ -95,7 +95,7 @@ public class ViewMapper implements RegistryListener {
         }
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        System.out.println(event.getClass().getSimpleName() + ": " + gson.toJson(event));
+        // System.out.println(event.getClass().getSimpleName() + ": " + gson.toJson(event));
     }
 
     public void setSelectedObject(UUID id, List<Handle> handles) {
@@ -119,10 +119,10 @@ public class ViewMapper implements RegistryListener {
                     Shape node = shapeMapper.getShape(obj.id());
                     if (node != null) node.setVisible(visible);
 
-                    connectionMapper.getVisualConnections().forEach((connId, path) -> {
+                    connectionMapper.getVisualConnections().forEach((connId, group) -> {
                         var conn = registry.getConnections().get(connId);
                         if (conn != null && (conn.sourceId().equals(obj.id()) || conn.targetId().equals(obj.id()))) {
-                            path.setVisible(visible);
+                            group.setVisible(visible);
                         }
                     });
                 });

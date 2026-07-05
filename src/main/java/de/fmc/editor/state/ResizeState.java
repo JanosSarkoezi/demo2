@@ -27,7 +27,7 @@ public class ResizeState implements EditorState {
 
     @Override
     public void enterState(CanvasController context) {
-        System.out.println("Entering ResizeState for: " + targetObjectId);
+        // System.out.println("Entering ResizeState for: " + targetObjectId);
         FmcObject obj = getTargetObject(context);
         if (obj != null && context.getViewMapper() != null) {
             context.getViewMapper().setSelectedObject(targetObjectId, ViewMapper.getHandles(obj));

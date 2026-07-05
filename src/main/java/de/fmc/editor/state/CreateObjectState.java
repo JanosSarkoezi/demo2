@@ -1,6 +1,7 @@
 package de.fmc.editor.state;
 
 import de.fmc.editor.controller.CanvasController;
+import de.fmc.editor.controller.Tool;
 import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.command.CreateObjectCommand;
 import de.fmc.editor.core.factory.FmcFactory;
@@ -19,7 +20,8 @@ public class CreateObjectState implements EditorState {
     public void handleInput(InteractionEventData event, CanvasController context) {
         // ESC -> zurück zu Idle (Tool wechseln)
         if (event.activeKey().isPresent() && event.activeKey().get() == KeyCode.ESCAPE) {
-            context.reactivateCurrentTool();
+//            context.reactivateCurrentTool();
+            context.setActiveTool(Tool.SELECT);
             return;
         }
 

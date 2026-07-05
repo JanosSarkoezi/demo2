@@ -58,9 +58,26 @@
                 <groupId>org.openjfx</groupId>
                 <artifactId>javafx-maven-plugin</artifactId>
                 <version>0.0.8</version>
-                <configuration>
-                    <mainClass>de.fmc.editor.Main</mainClass>
-                </configuration>
+                <executions>
+                    <!-- Standard-Start (ohne Debug) -->
+                    <execution>
+                        <id>default-cli</id>
+                        <configuration>
+                            <mainClass>de.fmc.editor.Main</mainClass>
+                        </configuration>
+                    </execution>
+                    <!-- Debug-Start (mit Debug-Schnittstelle) -->
+                    <execution>
+                        <id>debug</id>
+                        <configuration>
+                            <options>
+<!--                                <option>-agentlib:jdwp=transport=dt_socket,server=n,address=localhost:8000,suspend=y</option>-->
+                                <option>-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:8000</option>
+                            </options>
+                            <mainClass>de.fmc.editor.Main</mainClass>
+                        </configuration>
+                    </execution>
+                </executions>
             </plugin>
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>

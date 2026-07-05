@@ -7,7 +7,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 public class CodePackerOptimized {
     public static void main(String[] args) throws IOException {
         // HIER den Pfad zu deinem Java-Paket eintragen:
-        Path packageFolder = Paths.get("./src/main/java/de/fmc/editor");
+        Path packageFolder = Paths.get("./src");
         Path outputFile = Paths.get("./gesamtes_projekt_kontext.md");
 
         StringBuilder output = new StringBuilder();

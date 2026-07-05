@@ -18,7 +18,7 @@ public class CreateConnectionState implements EditorState {
 
     @Override
     public void enterState(CanvasController context) {
-        System.out.println("Verbindungs-Modus aktiv: Blende Wegpunkte ein.");
+//        System.out.println("Verbindungs-Modus aktiv: Blende Wegpunkte ein.");
         context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, true);
     }
 
@@ -31,7 +31,7 @@ public class CreateConnectionState implements EditorState {
         context.getSelectedObjectIds().clear();
         context.updateSelectionInView();
 
-        System.out.println("Verbindungs-Modus verlassen: Blende Wegpunkte aus.");
+//        System.out.println("Verbindungs-Modus verlassen: Blende Wegpunkte aus.");
         if (!context.getToolbarController().isWaypointsVisible()) {
             context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false);
         }
@@ -58,7 +58,7 @@ public class CreateConnectionState implements EditorState {
                     context.getSelectedObjectIds().add(sourceObjectId);
                     context.updateSelectionInView();
 
-                    System.out.println("Start-Objekt fuer Verbindung gewaehlt: " + sourceObjectId);
+//                    System.out.println("Start-Objekt fuer Verbindung gewaehlt: " + sourceObjectId);
                 }
             } else {
                 // 2. Schritt: Wenn bereits ein Startobjekt existiert
@@ -71,7 +71,7 @@ public class CreateConnectionState implements EditorState {
                     context.getCommandHistory().executeCommand(cmd);
 
                     collectedWaypointIds.add(wpId);
-                    System.out.println("Wegpunkt hinzugefuegt an: " + event.worldX() + ", " + event.worldY());
+//                    System.out.println("Wegpunkt hinzugefuegt an: " + event.worldX() + ", " + event.worldY());
                 } else if (!hit.id().equals(sourceObjectId) && hit.type() != FmcType.WEGPUNKT) {
                     // Klick auf anderes Objekt -> Verbindung abschließen
                     var cmd = new CreateConnectionCommand(context.getRegistry(), sourceObjectId, hit.id(), collectedWaypointIds);
@@ -79,7 +79,7 @@ public class CreateConnectionState implements EditorState {
 
                     if (cmd.isSuccess()) {
                         context.getCommandHistory().addExecutedCommand(cmd);
-                        System.out.println("Polygon-Verbindung erfolgreich via Command erstellt!");
+//                        System.out.println("Polygon-Verbindung erfolgreich via Command erstellt!");
                         connectionFinished = true;
 
                         context.getSelectedObjectIds().clear();
@@ -90,7 +90,7 @@ public class CreateConnectionState implements EditorState {
 
                         context.reactivateCurrentTool();
                     } else {
-                        System.out.println("Verbindung existiert bereits oder ist ungueltig! Raeume Wegpunkte auf...");
+                        // System.out.println("Verbindung existiert bereits oder ist ungueltig! Raeume Wegpunkte auf...");
                         cleanupCollectedWaypoints(context);
                     }
                 }

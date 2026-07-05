@@ -3,6 +3,7 @@ package de.fmc.editor.view;
 import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.model.Connection;
 import de.fmc.editor.core.model.FmcObject;
+import javafx.geometry.Point2D;
 import javafx.scene.shape.Path;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -14,7 +15,7 @@ public class ConnectionViewMapper {
 
     private final GraphView graphView;
     private final CoreRegistry registry;
-    private final Map<UUID, Path> visualConnections = new HashMap<>();
+    private final Map<UUID, javafx.scene.Group> visualConnections = new HashMap<>();
     private RoutingStrategy routingStrategy = new StraightLineRouting();
 
     public ConnectionViewMapper(GraphView graphView, CoreRegistry registry) {
@@ -32,9 +33,9 @@ public class ConnectionViewMapper {
     }
 
     public void handleConnectionRemoved(UUID id) {
-        Path path = visualConnections.remove(id);
-        if (path != null) {
-            graphView.getConnectionLayer().getChildren().remove(path);
+        javafx.scene.Group group = visualConnections.remove(id);
+        if (group != null) {
+            graphView.getConnectionLayer().getChildren().remove(group);
         }
     }
 
@@ -69,28 +70,126 @@ public class ConnectionViewMapper {
                     .ifPresent(waypoints::add);
         }
 
-        Path oldPath = visualConnections.get(connId);
-        if (oldPath != null) {
-            graphView.getConnectionLayer().getChildren().remove(oldPath);
+        javafx.scene.Group oldGroup = visualConnections.get(connId);
+        if (oldGroup != null) {
+            graphView.getConnectionLayer().getChildren().remove(oldGroup);
         }
 
         Path newPath = routingStrategy.calculatePath(source, target, waypoints);
-        newPath.setStroke(javafx.scene.paint.Color.DARKGRAY);
-        newPath.setStrokeWidth(4.0);
-        newPath.setMouseTransparent(false);
-        newPath.getProperties().put("UUID", connId);
-        newPath.getProperties().put("TYPE", "CONNECTION");
+        javafx.scene.Group newGroup = createConnectionNode(connId, newPath, source, target, waypoints);
 
-        visualConnections.put(connId, newPath);
-        graphView.getConnectionLayer().getChildren().add(newPath);
+        visualConnections.put(connId, newGroup);
+        graphView.getConnectionLayer().getChildren().add(newGroup);
+    }
+
+    private javafx.scene.Group createConnectionNode(UUID connId, Path path, FmcObject source, FmcObject target, List<FmcObject> waypoints) {
+        // letzter Punkt vor dem Ziel (Quelle oder letzter Wegpunkt)
+        double fromX, fromY;
+        if (waypoints != null && !waypoints.isEmpty()) {
+            FmcObject lastWp = waypoints.get(waypoints.size() - 1);
+            fromX = lastWp.x();
+            fromY = lastWp.y();
+        } else {
+            fromX = source.x();
+            fromY = source.y();
+        }
+
+        // Schnittpunkt mit dem Rand des Zielobjekts
+        Point2D intersection = getBoundaryIntersection(target, fromX, fromY);
+
+        // Winkel des letzten Segments (von from nach intersection)
+        double angle = Math.atan2(intersection.getY() - fromY, intersection.getX() - fromX);
+
+        // Pfeillänge (muss mit der im Pfeil-Polygon übereinstimmen)
+        double arrowSize = 12.0;
+
+        // Endpunkt der Linie = Basis des Pfeils (um arrowSize zurückversetzt)
+        double lineEndX = intersection.getX() - arrowSize * Math.cos(angle);
+        double lineEndY = intersection.getY() - arrowSize * Math.sin(angle);
+
+        // Letztes Liniensegment anpassen
+        if (!path.getElements().isEmpty()) {
+            var lastElement = path.getElements().get(path.getElements().size() - 1);
+            if (lastElement instanceof javafx.scene.shape.LineTo lineTo) {
+                lineTo.setX(lineEndX);
+                lineTo.setY(lineEndY);
+            }
+        }
+
+        path.setStroke(javafx.scene.paint.Color.DARKGRAY);
+        path.setStrokeWidth(4.0);
+        path.setMouseTransparent(false);
+
+        // Pfeil erstellen (Spitze bei (0,0), Basis bei (-arrowSize, 0))
+        javafx.scene.shape.Polygon arrowHead = new javafx.scene.shape.Polygon();
+        arrowHead.getPoints().addAll(
+                0.0, 0.0,
+                -arrowSize, -arrowSize * 0.5,
+                -arrowSize,  arrowSize * 0.5
+        );
+        arrowHead.setFill(javafx.scene.paint.Color.DARKGRAY);
+        arrowHead.setStroke(javafx.scene.paint.Color.WHITE);
+        arrowHead.setStrokeWidth(1.0);
+
+        // Rotation und Positionierung des Pfeils
+        javafx.scene.transform.Rotate rotate = new javafx.scene.transform.Rotate(Math.toDegrees(angle), 0, 0);
+        arrowHead.getTransforms().add(rotate);
+        arrowHead.setLayoutX(intersection.getX());
+        arrowHead.setLayoutY(intersection.getY());
+
+        javafx.scene.Group group = new javafx.scene.Group(path, arrowHead);
+        group.getProperties().put("UUID", connId);
+        group.getProperties().put("TYPE", "CONNECTION");
+
+        return group;
+    }
+
+    private Point2D getBoundaryIntersection(FmcObject obj, double fromX, double fromY) {
+        double cx = obj.x();
+        double cy = obj.y();
+        double w = obj.width();
+        double h = obj.height();
+
+        if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS) {
+            double r = w / 2.0;
+            double dx = fromX - cx;
+            double dy = fromY - cy;
+            double dist = Math.hypot(dx, dy);
+            if (dist < 0.001) {
+                return new Point2D(cx, cy);
+            }
+            return new Point2D(cx + (dx / dist) * r, cy + (dy / dist) * r);
+        } else {
+            double dx = fromX - cx;
+            double dy = fromY - cy;
+
+            // Punkt liegt exakt im Mittelpunkt
+            if (Math.abs(dx) < 0.001 && Math.abs(dy) < 0.001) {
+                return new Point2D(cx, cy);
+            }
+
+            // Parameter t für vertikale Kante (rechts/links)
+            double tX = (Math.abs(dx) < 0.001) ? Double.POSITIVE_INFINITY
+                    : (w / 2.0) / Math.abs(dx);
+            // Parameter t für horizontale Kante (oben/unten)
+            double tY = (Math.abs(dy) < 0.001) ? Double.POSITIVE_INFINITY
+                    : (h / 2.0) / Math.abs(dy);
+
+            // Der Rand wird bei der zuerst erreichten Kante getroffen
+            double t = Math.min(tX, tY);
+
+            // Schnittpunkt auf dem Rechteckrand
+            return new Point2D(cx + dx * t, cy + dy * t);
+
+        }
     }
 
     public void clear() {
-        visualConnections.values().forEach(path -> graphView.getConnectionLayer().getChildren().remove(path));
+        visualConnections.values().forEach(group -> graphView.getConnectionLayer().getChildren().remove(group));
         visualConnections.clear();
     }
 
-    public Map<UUID, Path> getVisualConnections() {
+    public Map<UUID, javafx.scene.Group> getVisualConnections() {
         return visualConnections;
     }
 }

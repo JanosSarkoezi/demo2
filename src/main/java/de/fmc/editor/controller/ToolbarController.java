@@ -134,4 +134,16 @@ public class ToolbarController {
             }
         }
     }
+
+    public void selectTool(Tool tool) {
+        toolGroup.selectToggle(null);
+        switch (tool) {
+            case SELECT -> {
+                // Kein ToggleButton für SELECT, alle abgewählt
+            }
+            case CIRCLE_CREATE -> circleButton.setSelected(true);
+            case RECTANGLE_CREATE -> rectButton.setSelected(true);
+            case CONNECTION_CREATE -> connectButton.setSelected(true);
+        }
+    }
 }

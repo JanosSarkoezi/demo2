@@ -11,6 +11,7 @@ import de.fmc.editor.state.InteractionEventData;
 import de.fmc.editor.view.GraphView;
 import de.fmc.editor.view.ViewMapper;
 import javafx.fxml.FXML;
+import javafx.geometry.Point2D;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
 
@@ -64,6 +65,10 @@ public class CanvasController {
         applyStateForTool(tool);
     }
 
+    public Tool getActiveTool() {
+        return activeTool;
+    }
+
     public void reactivateCurrentTool() {
         applyStateForTool(this.activeTool); // Reaktiviert nach dem Draggen
     }
@@ -115,7 +120,7 @@ public class CanvasController {
 
     @FXML
     public void onMousePressed(MouseEvent event) {
-        javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
+        Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
         InteractionEventData data = new InteractionEventData(
             worldPos.getX(), worldPos.getY(),
             event.getSceneX(), event.getSceneY(),
@@ -133,7 +138,7 @@ public class CanvasController {
 
     @FXML
     public void onMouseDragged(MouseEvent event) {
-        javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
+        Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
         InteractionEventData data = new InteractionEventData(
             worldPos.getX(), worldPos.getY(),
             event.getSceneX(), event.getSceneY(),
@@ -151,7 +156,7 @@ public class CanvasController {
 
     @FXML
     public void onMouseReleased(MouseEvent event) {
-        javafx.geometry.Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
+        Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
         InteractionEventData data = new InteractionEventData(
             worldPos.getX(), worldPos.getY(),
             event.getSceneX(), event.getSceneY(),
@@ -178,7 +183,15 @@ public class CanvasController {
 
     public UUID findConnectionAt(double sceneX, double sceneY) {
         for (javafx.scene.Node node : drawingPane.getConnectionLayer().getChildren()) {
-            if (node instanceof javafx.scene.shape.Path path) {
+            if (node instanceof javafx.scene.Group group) {
+                for (javafx.scene.Node child : group.getChildren()) {
+                    if (child instanceof javafx.scene.shape.Path path) {
+                        if (group.isVisible() && path.contains(path.sceneToLocal(sceneX, sceneY))) {
+                            return (UUID) group.getProperties().get("UUID");
+                        }
+                    }
+                }
+            } else if (node instanceof javafx.scene.shape.Path path) {
                 if (path.isVisible() && path.contains(path.sceneToLocal(sceneX, sceneY))) {
                     return (UUID) path.getProperties().get("UUID");
                 }

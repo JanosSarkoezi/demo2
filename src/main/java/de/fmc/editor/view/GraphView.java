@@ -1,6 +1,7 @@
 package de.fmc.editor.view;
 
 import javafx.scene.Group;
+import javafx.geometry.Point2D;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Scale;
@@ -57,7 +58,7 @@ public class GraphView extends Pane {
     }
 
     // Hilfsmethode für die Koordinaten-Umrechnung (für die States)
-    public javafx.geometry.Point2D getMouseInWorld(double sceneX, double sceneY) {
+    public Point2D getMouseInWorld(double sceneX, double sceneY) {
         return world.sceneToLocal(sceneX, sceneY);
     }
 
@@ -76,12 +77,12 @@ public class GraphView extends Pane {
         double mouseX = event.getSceneX();
         double mouseY = event.getSceneY();
 
-        javafx.geometry.Point2D mouseInWorldBefore = world.sceneToLocal(mouseX, mouseY);
+        Point2D mouseInWorldBefore = world.sceneToLocal(mouseX, mouseY);
 
         zoomTransform.setX(newScale);
         zoomTransform.setY(newScale);
 
-        javafx.geometry.Point2D mouseInWorldAfter = world.sceneToLocal(mouseX, mouseY);
+        Point2D mouseInWorldAfter = world.sceneToLocal(mouseX, mouseY);
 
         double deltaX = mouseInWorldAfter.getX() - mouseInWorldBefore.getX();
         double deltaY = mouseInWorldAfter.getY() - mouseInWorldBefore.getY();

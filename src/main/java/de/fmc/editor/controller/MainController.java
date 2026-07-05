@@ -24,7 +24,7 @@ public class MainController {
 
     @FXML
     public void initialize() {
-        System.out.println("MainController initialized");
+//        System.out.println("MainController initialized");
     }
 
     public void init(CoreRegistry registry) {
@@ -53,29 +53,19 @@ public class MainController {
     public void setupShortcuts(Scene scene) {
         var accelerators = scene.getAccelerators();
 
-        // 1. STRG + Z -> Undo
-        accelerators.put(
-            new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN),
-            () -> canvasController.getCommandHistory().undo()
-        );
+        // 1. Globale Aktionen
+        Shortcut.UNDO.register(accelerators, () -> canvasController.getCommandHistory().undo());
+        Shortcut.REDO.register(accelerators, () -> canvasController.getCommandHistory().redo());
+        Shortcut.DELETE.register(accelerators, this::deleteSelected);
+        Shortcut.DELETE_ALT.register(accelerators, this::deleteSelected);
+        Shortcut.SELECT_ALL.register(accelerators, this::selectAll);
+        Shortcut.SAVE.register(accelerators, this::saveDiagram);
+        Shortcut.LOAD.register(accelerators, this::loadDiagram);
 
-        // 2. STRG + SHIFT + Z -> Redo
-        accelerators.put(
-            new KeyCodeCombination(KeyCode.Z, KeyCombination.CONTROL_DOWN, KeyCombination.SHIFT_DOWN),
-            () -> canvasController.getCommandHistory().redo()
-        );
-
-        // 3. ENTF -> Löschen
-        accelerators.put(
-            new KeyCodeCombination(KeyCode.DELETE),
-            this::deleteSelected
-        );
-
-        // 4. BACKSPACE -> Alternativ auch Löschen
-        accelerators.put(
-            new KeyCodeCombination(KeyCode.BACK_SPACE),
-            this::deleteSelected
-        );
+        // 2. Werkzeug-Wechsel
+        Shortcut.TOOL_CIRCLE.register(accelerators, () -> switchTool(Tool.CIRCLE_CREATE));
+        Shortcut.TOOL_RECTANGLE.register(accelerators, () -> switchTool(Tool.RECTANGLE_CREATE));
+        Shortcut.TOOL_CONNECTION.register(accelerators, () -> switchTool(Tool.CONNECTION_CREATE));
     }
 
     private void deleteSelected() {
@@ -91,5 +81,31 @@ public class MainController {
             selectedIds.clear();
             canvasController.updateSelectionInView();
         }
+    }
+
+    private void selectAll() {
+        var allIds = canvasController.getRegistry().getObjects().stream()
+            .map(de.fmc.editor.core.model.FmcObject::id)
+            .collect(java.util.stream.Collectors.toList());
+        canvasController.getSelectedObjectIds().clear();
+        canvasController.getSelectedObjectIds().addAll(allIds);
+        canvasController.updateSelectionInView();
+    }
+
+    private void saveDiagram() {
+        toolbarController.onSaveClick(null);
+    }
+
+    private void loadDiagram() {
+        toolbarController.onLoadClick(null);
+    }
+
+    private void switchTool(Tool tool) {
+        if (canvasController.getActiveTool() == tool) {
+            tool = Tool.SELECT;
+        }
+        toolbarController.clearSelection();
+        canvasController.setActiveTool(tool);
+        toolbarController.selectTool(tool);
     }
 }
