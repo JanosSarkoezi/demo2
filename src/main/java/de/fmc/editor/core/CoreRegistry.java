@@ -5,6 +5,7 @@ import de.fmc.editor.core.event.RegistryListener;
 import de.fmc.editor.core.factory.FmcFactory;
 import de.fmc.editor.core.model.Connection;
 import de.fmc.editor.core.model.FmcObject;
+import de.fmc.editor.core.model.Layer;
 import de.fmc.editor.core.persistence.DiagramData;
 
 import java.util.ArrayList;
@@ -21,14 +22,14 @@ public class CoreRegistry {
 
     private final Map<UUID, FmcObject> objects = new HashMap<>();
     private final Map<UUID, Connection> connections = new HashMap<>();
-    private final Map<UUID, de.fmc.editor.core.model.Layer> layers = new HashMap<>();
+    private final Map<UUID, Layer> layers = new HashMap<>();
     private final List<RegistryListener> listeners = new ArrayList<>();
 
     public CoreRegistry() {
         // Default Layer anlegen
-        addLayer(new de.fmc.editor.core.model.Layer(DEFAULT_LAYER_ID, "Standard", true));
+        addLayer(new Layer(DEFAULT_LAYER_ID, "Standard", true));
         // Wegpunkt-Layer initial unsichtbar anlegen
-        addLayer(new de.fmc.editor.core.model.Layer(WAYPOINT_LAYER_ID, "Wegpunkte", false));
+        addLayer(new Layer(WAYPOINT_LAYER_ID, "Wegpunkte", false));
     }
 
     public void addListener(RegistryListener listener) {
@@ -157,15 +158,15 @@ public class CoreRegistry {
         }
     }
 
-    public void addLayer(de.fmc.editor.core.model.Layer layer) {
+    public void addLayer(Layer layer) {
         layers.put(layer.id(), layer);
         fireEvent(new RegistryEvent.LayerAdded(layer));
     }
 
     public void setLayerVisibility(UUID id, boolean visible) {
-        de.fmc.editor.core.model.Layer layer = layers.get(id);
+        Layer layer = layers.get(id);
         if (layer != null && layer.visible() != visible) {
-            layers.put(id, new de.fmc.editor.core.model.Layer(id, layer.name(), visible));
+            layers.put(id, new Layer(id, layer.name(), visible));
             fireEvent(new RegistryEvent.LayerVisibilityChanged(id, visible));
         }
     }
@@ -182,7 +183,7 @@ public class CoreRegistry {
         return Collections.unmodifiableMap(connections);
     }
 
-    public Map<UUID, de.fmc.editor.core.model.Layer> getLayers() {
+    public Map<UUID, Layer> getLayers() {
         return Collections.unmodifiableMap(layers);
     }
 

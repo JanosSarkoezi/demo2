@@ -1,6 +1,7 @@
 package de.fmc.editor.controller;
 
 import de.fmc.editor.core.CoreRegistry;
+import de.fmc.editor.core.command.CommandHistory;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.state.CreateConnectionState;
@@ -8,12 +9,17 @@ import de.fmc.editor.state.CreateObjectState;
 import de.fmc.editor.state.EditorState;
 import de.fmc.editor.state.IdleState;
 import de.fmc.editor.state.InteractionEventData;
+import de.fmc.editor.state.ResizeState;
 import de.fmc.editor.view.GraphView;
 import de.fmc.editor.view.ViewMapper;
 import javafx.fxml.FXML;
 import javafx.geometry.Point2D;
+import javafx.scene.Group;
+import javafx.scene.Node;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
+import javafx.scene.shape.Path;
 
 import java.util.Optional;
 import java.util.UUID;
@@ -27,11 +33,11 @@ public class CanvasController {
     private CoreRegistry registry;
     private ToolbarController toolbarController;
     private ViewMapper viewMapper;
-    private EditorState currentState = new de.fmc.editor.state.IdleState();
+    private EditorState currentState = new IdleState();
 
-    private final de.fmc.editor.core.command.CommandHistory commandHistory = new de.fmc.editor.core.command.CommandHistory();
+    private final CommandHistory commandHistory = new CommandHistory();
 
-    public de.fmc.editor.core.command.CommandHistory getCommandHistory() {
+    public CommandHistory getCommandHistory() {
         return commandHistory;
     }
 
@@ -73,6 +79,16 @@ public class CanvasController {
         applyStateForTool(this.activeTool); // Reaktiviert nach dem Draggen
     }
 
+    public void resetToIdleState() {
+        setCurrentState(new IdleState());
+        setActiveTool(Tool.SELECT);
+        if (toolbarController != null) {
+            toolbarController.clearSelection();
+        }
+        getSelectedObjectIds().clear();
+        updateSelectionInView();
+    }
+
     public void setCurrentState(EditorState state) {
         if (this.currentState != null) {
             this.currentState.exitState(this);
@@ -89,7 +105,7 @@ public class CanvasController {
         }
 
         // Wenn wir den ResizeState verlassen, Handles löschen
-        if (viewMapper != null && !(state instanceof de.fmc.editor.state.ResizeState)) {
+        if (viewMapper != null && !(state instanceof ResizeState)) {
             viewMapper.setSelectedObject(null, null);
         }
     }
@@ -173,6 +189,26 @@ public class CanvasController {
     }
 
     @FXML
+    public void onKeyPressed(KeyEvent event) {
+        // Nur Tasten verarbeiten, wenn keine Texteingabe aktiv ist (z.B. kein TextField)
+        // Hier nehmen wir alle Tasten an.
+        // Point2D worldPos = drawingPane.getMouseInWorld(/* aktuelle Mausposition holen */);
+        // Die Mausposition könntest du dir in Feldern merken, oder einfach 0/0 übergeben,
+        // da sie für Tastenkürzel meist nicht gebraucht wird.
+        InteractionEventData data = new InteractionEventData(
+                0, 0,                     // worldX/Y – für ESC nicht relevant
+                0, 0,                     // sceneX/Y – nicht relevant
+                0,                        // clickCount – nicht relevant
+                false, false, false,      // Mausbuttons – nicht gedrückt
+                event.isControlDown(),
+                event.isShiftDown(),
+                event.isAltDown(),
+                Optional.of(event.getCode())
+        );
+        currentState.handleInput(data, this);
+    }
+
+    @FXML
     public void handleScroll(ScrollEvent event) {
         drawingPane.handleZoom(event);
     }
@@ -182,16 +218,16 @@ public class CanvasController {
     }
 
     public UUID findConnectionAt(double sceneX, double sceneY) {
-        for (javafx.scene.Node node : drawingPane.getConnectionLayer().getChildren()) {
-            if (node instanceof javafx.scene.Group group) {
-                for (javafx.scene.Node child : group.getChildren()) {
-                    if (child instanceof javafx.scene.shape.Path path) {
+        for (Node node : drawingPane.getConnectionLayer().getChildren()) {
+            if (node instanceof Group group) {
+                for (Node child : group.getChildren()) {
+                    if (child instanceof Path path) {
                         if (group.isVisible() && path.contains(path.sceneToLocal(sceneX, sceneY))) {
                             return (UUID) group.getProperties().get("UUID");
                         }
                     }
                 }
-            } else if (node instanceof javafx.scene.shape.Path path) {
+            } else if (node instanceof Path path) {
                 if (path.isVisible() && path.contains(path.sceneToLocal(sceneX, sceneY))) {
                     return (UUID) path.getProperties().get("UUID");
                 }
@@ -218,7 +254,7 @@ public class CanvasController {
                 return obj.x() >= minX && obj.x() <= maxX &&
                        obj.y() >= minY && obj.y() <= maxY;
             })
-            .map(de.fmc.editor.core.model.FmcObject::id)
+            .map(FmcObject::id)
             .toList();
     }
 
@@ -232,15 +268,14 @@ public class CanvasController {
                     return false;
                 }
 
-                if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS ||
-                    obj.type() == de.fmc.editor.core.model.FmcType.WEGPUNKT) {
+                if (obj.type() == FmcType.KREIS || obj.type() == FmcType.WEGPUNKT) {
 
                     // Für Wegpunkte geben wir eine etwas größere Klick-Zone (10px statt 5px)
-                    double radius = (obj.type() == de.fmc.editor.core.model.FmcType.WEGPUNKT) ? 12.0 : (obj.width() / 2);
+                    double radius = (obj.type() == FmcType.WEGPUNKT) ? 12.0 : (obj.width() / 2);
                     double dx = obj.x() - x;
                     double dy = obj.y() - y;
                     return (dx * dx + dy * dy) <= (radius * radius);
-                } else if (obj.type() == de.fmc.editor.core.model.FmcType.QUADRAT) {
+                } else if (obj.type() == FmcType.QUADRAT) {
                     double halfW = obj.width() / 2;
                     double halfH = obj.height() / 2;
                     return x >= (obj.x() - halfW) && x <= (obj.x() + halfW) &&

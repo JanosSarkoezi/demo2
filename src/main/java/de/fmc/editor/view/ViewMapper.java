@@ -5,6 +5,7 @@ import com.google.gson.GsonBuilder;
 import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.event.RegistryEvent;
 import de.fmc.editor.core.event.RegistryListener;
+import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.Handle;
 import javafx.scene.shape.Shape;
 import java.util.Collection;
@@ -33,7 +34,7 @@ public class ViewMapper implements RegistryListener {
         connectionMapper.setRoutingStrategy(strategy);
     }
 
-    public static List<Handle> getHandles(de.fmc.editor.core.model.FmcObject obj) {
+    public static List<Handle> getHandles(FmcObject obj) {
         return SelectionViewManager.getHandles(obj);
     }
 
@@ -61,11 +62,11 @@ public class ViewMapper implements RegistryListener {
                 connectionMapper.updateConnectionsForObject(id);
             }
             case RegistryEvent.ObjectResized(var id, var w, var h) -> {
-                // ShapeViewMapper needs x, y too for Rectangle
-                registry.getObjects().stream()
-                        .filter(o -> o.id().equals(id))
-                        .findFirst()
-                        .ifPresent(obj -> shapeMapper.handleObjectResized(id, obj.x(), obj.y(), w, h));
+                // OPTIMIERUNG: O(1) statt O(N) Stream-Suche
+                FmcObject obj = registry.getObject(id);
+                if (obj != null) {
+                    shapeMapper.handleObjectResized(id, obj.x(), obj.y(), w, h);
+                }
                 connectionMapper.updateConnectionsForObject(id);
             }
             case RegistryEvent.ConnectionAdded(var id, var conn) -> connectionMapper.handleConnectionAdded(id, conn);
@@ -87,15 +88,15 @@ public class ViewMapper implements RegistryListener {
             };
 
             if (singleId.equals(affectedId)) {
-                registry.getObjects().stream()
-                        .filter(o -> o.id().equals(singleId))
-                        .findFirst()
-                        .ifPresent(obj -> selectionManager.refreshHandles(getHandles(obj)));
+                // OPTIMIERUNG: O(1) statt O(N) Stream-Suche
+                FmcObject obj = registry.getObject(singleId);
+                if (obj != null) {
+                    selectionManager.refreshHandles(getHandles(obj));
+                }
             }
         }
 
         Gson gson = new GsonBuilder().setPrettyPrinting().create();
-        // System.out.println(event.getClass().getSimpleName() + ": " + gson.toJson(event));
     }
 
     public void setSelectedObject(UUID id, List<Handle> handles) {
@@ -112,19 +113,35 @@ public class ViewMapper implements RegistryListener {
         registry.getLayers().forEach((id, layer) -> handleLayerVisibilityChanged(id, layer.visible()));
     }
 
+    /**
+     * OPTIMIERT: Schaltet die Sichtbarkeit von Objekten und deren zugehörigen Verbindungen
+     * deutlich effizienter und ohne verschachtelte O(N * M) Schleifen um.
+     */
     private void handleLayerVisibilityChanged(UUID layerId, boolean visible) {
-        registry.getObjects().stream()
-                .filter(obj -> obj.layerId().equals(layerId))
-                .forEach(obj -> {
-                    Shape node = shapeMapper.getShape(obj.id());
-                    if (node != null) node.setVisible(visible);
+        // 1. Objekte des Layers umschalten
+        registry.getObjects().forEach(obj -> {
+            if (obj.layerId().equals(layerId)) {
+                Shape node = shapeMapper.getShape(obj.id());
+                if (node != null) {
+                    node.setVisible(visible);
+                }
+            }
+        });
 
-                    connectionMapper.getVisualConnections().forEach((connId, group) -> {
-                        var conn = registry.getConnections().get(connId);
-                        if (conn != null && (conn.sourceId().equals(obj.id()) || conn.targetId().equals(obj.id()))) {
-                            group.setVisible(visible);
-                        }
-                    });
-                });
+        // 2. Verbindungen, die an diesem Layer hängen, umschalten (über O(1) Registry-Lookups)
+        connectionMapper.getVisualConnections().forEach((connId, group) -> {
+            var conn = registry.getConnections().get(connId);
+            if (conn != null) {
+                FmcObject src = registry.getObject(conn.sourceId());
+                FmcObject tgt = registry.getObject(conn.targetId());
+
+                boolean srcMatches = (src != null && src.layerId().equals(layerId));
+                boolean tgtMatches = (tgt != null && tgt.layerId().equals(layerId));
+
+                if (srcMatches || tgtMatches) {
+                    group.setVisible(visible);
+                }
+            }
+        });
     }
 }

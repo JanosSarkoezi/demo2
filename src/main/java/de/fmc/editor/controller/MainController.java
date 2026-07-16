@@ -1,13 +1,15 @@
 package de.fmc.editor.controller;
 
 import de.fmc.editor.core.CoreRegistry;
+import de.fmc.editor.core.command.DeleteSelectedCommand;
+import de.fmc.editor.core.factory.FmcFactory;
+import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.view.ViewMapper;
 import javafx.fxml.FXML;
 import javafx.scene.Scene;
 import javafx.scene.input.KeyCode;
-import javafx.scene.input.KeyCodeCombination;
-import javafx.scene.input.KeyCombination;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.VBox;
 
 public class MainController {
@@ -43,8 +45,8 @@ public class MainController {
         canvasController.setViewMapper(viewMapper);
 
         // --- Demo-Daten für Etappe 4 ---
-        var k1 = de.fmc.editor.core.factory.FmcFactory.createObject(de.fmc.editor.core.model.FmcType.KREIS, 200, 200, CoreRegistry.DEFAULT_LAYER_ID);
-        var q1 = de.fmc.editor.core.factory.FmcFactory.createObject(de.fmc.editor.core.model.FmcType.QUADRAT, 400, 200, CoreRegistry.DEFAULT_LAYER_ID);
+        var k1 = FmcFactory.createObject(FmcType.KREIS, 200, 200, CoreRegistry.DEFAULT_LAYER_ID);
+        var q1 = FmcFactory.createObject(FmcType.QUADRAT, 400, 200, CoreRegistry.DEFAULT_LAYER_ID);
         registry.addObject(k1);
         registry.addObject(q1);
         registry.addConnection(k1.id(), q1.id(), java.util.Collections.emptyList());
@@ -66,12 +68,19 @@ public class MainController {
         Shortcut.TOOL_CIRCLE.register(accelerators, () -> switchTool(Tool.CIRCLE_CREATE));
         Shortcut.TOOL_RECTANGLE.register(accelerators, () -> switchTool(Tool.RECTANGLE_CREATE));
         Shortcut.TOOL_CONNECTION.register(accelerators, () -> switchTool(Tool.CONNECTION_CREATE));
+
+        scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
+            if (event.getCode() == KeyCode.ESCAPE) {
+                canvasController.onKeyPressed(event);
+                event.consume(); // Verhindert, dass andere Komponenten ESC ebenfalls verarbeiten
+            }
+        });
     }
 
     private void deleteSelected() {
         var selectedIds = canvasController.getSelectedObjectIds();
         if (!selectedIds.isEmpty()) {
-            var cmd = new de.fmc.editor.core.command.DeleteSelectedCommand(
+            var cmd = new DeleteSelectedCommand(
                 canvasController.getRegistry(), 
                 new java.util.ArrayList<>(selectedIds)
             );
@@ -85,8 +94,8 @@ public class MainController {
 
     private void selectAll() {
         var allIds = canvasController.getRegistry().getObjects().stream()
-            .map(de.fmc.editor.core.model.FmcObject::id)
-            .collect(java.util.stream.Collectors.toList());
+            .map(FmcObject::id)
+            .toList();
         canvasController.getSelectedObjectIds().clear();
         canvasController.getSelectedObjectIds().addAll(allIds);
         canvasController.updateSelectionInView();

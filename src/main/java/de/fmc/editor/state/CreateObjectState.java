@@ -20,8 +20,7 @@ public class CreateObjectState implements EditorState {
     public void handleInput(InteractionEventData event, CanvasController context) {
         // ESC -> zurück zu Idle (Tool wechseln)
         if (event.activeKey().isPresent() && event.activeKey().get() == KeyCode.ESCAPE) {
-//            context.reactivateCurrentTool();
-            context.setActiveTool(Tool.SELECT);
+            context.resetToIdleState();
             return;
         }
 

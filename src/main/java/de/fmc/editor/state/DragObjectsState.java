@@ -2,6 +2,7 @@ package de.fmc.editor.state;
 
 import de.fmc.editor.controller.CanvasController;
 import de.fmc.editor.core.command.MoveMultipleObjectsCommand;
+import de.fmc.editor.core.model.FmcObject;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -19,19 +20,20 @@ public class DragObjectsState implements EditorState {
         this.startMouseWorldX = event.worldX();
         this.startMouseWorldY = event.worldY();
         this.isDragging = true;
-        
+
         var selectedIds = context.getSelectedObjectIds();
+
+        // OPTIMIERUNG 1: Direkter Zugriff über getObject() in O(1) statt Stream-Suche
         for (UUID id : selectedIds) {
-            context.getRegistry().getObjects().stream()
-                .filter(obj -> obj.id().equals(id))
-                .findFirst()
-                .ifPresent(obj -> initialPositions.put(id, new MoveMultipleObjectsCommand.Position(obj.x(), obj.y())));
+            FmcObject obj = context.getRegistry().getObject(id);
+            if (obj != null) {
+                initialPositions.put(id, new MoveMultipleObjectsCommand.Position(obj.x(), obj.y()));
+            }
         }
 
+        // OPTIMIERUNG 2: Auch hier für das primär gezogene Objekt direkter Zugriff
         if (!initialPositions.containsKey(primaryDraggedId)) {
-            var hit = context.getRegistry().getObjects().stream()
-                    .filter(o -> o.id().equals(primaryId))
-                    .findFirst().orElse(null);
+            FmcObject hit = context.getRegistry().getObject(primaryDraggedId);
             if (hit != null) {
                 initialPositions.put(primaryId, new MoveMultipleObjectsCommand.Position(hit.x(), hit.y()));
             }
@@ -49,7 +51,7 @@ public class DragObjectsState implements EditorState {
         // Drag
         if (event.isPrimaryButtonDown() && isDragging && event.activeKey().isEmpty()) {
             if (initialPositions.isEmpty()) return;
-            
+
             hasMoved = true;
             double deltaX = event.worldX() - startMouseWorldX;
             double deltaY = event.worldY() - startMouseWorldY;
@@ -81,11 +83,13 @@ public class DragObjectsState implements EditorState {
             isDragging = false;
             if (hasMoved) {
                 Map<UUID, MoveMultipleObjectsCommand.Position> currentPositions = new HashMap<>();
+
+                // OPTIMIERUNG 3: Ermittlung der Endpositionen ebenfalls per Direktzugriff in O(1)
                 for (UUID id : initialPositions.keySet()) {
-                    context.getRegistry().getObjects().stream()
-                        .filter(obj -> obj.id().equals(id))
-                        .findFirst()
-                        .ifPresent(obj -> currentPositions.put(id, new MoveMultipleObjectsCommand.Position(obj.x(), obj.y())));
+                    FmcObject obj = context.getRegistry().getObject(id);
+                    if (obj != null) {
+                        currentPositions.put(id, new MoveMultipleObjectsCommand.Position(obj.x(), obj.y()));
+                    }
                 }
 
                 var cmd = new MoveMultipleObjectsCommand(context.getRegistry(), initialPositions, currentPositions);

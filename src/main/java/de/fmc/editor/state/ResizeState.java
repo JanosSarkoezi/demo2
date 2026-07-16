@@ -1,6 +1,7 @@
 package de.fmc.editor.state;
 
 import de.fmc.editor.controller.CanvasController;
+import de.fmc.editor.core.command.ResizeObjectCommand;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.core.model.Handle;
@@ -137,7 +138,7 @@ public class ResizeState implements EditorState {
             isResizing = false;
             if (activeHandle != null) {
                 if (startW != lastKnownW || startH != lastKnownH) {
-                    var cmd = new de.fmc.editor.core.command.ResizeObjectCommand(
+                    var cmd = new ResizeObjectCommand(
                         context.getRegistry(), targetObjectId, startW, startH, lastKnownW, lastKnownH
                     );
                     context.getCommandHistory().executeCommand(cmd);

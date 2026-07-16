@@ -1,6 +1,7 @@
 package de.fmc.editor.state;
 
 import de.fmc.editor.controller.CanvasController;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 
 public class BoxSelectionState implements EditorState {
@@ -14,8 +15,8 @@ public class BoxSelectionState implements EditorState {
         this.selectionStartWorldY = event.worldY();
         
         this.selectionRect = new Rectangle(selectionStartWorldX, selectionStartWorldY, 0, 0);
-        this.selectionRect.setFill(javafx.scene.paint.Color.web("#0078D7", 0.3));
-        this.selectionRect.setStroke(javafx.scene.paint.Color.web("#0078D7"));
+        this.selectionRect.setFill(Color.web("#0078D7", 0.3));
+        this.selectionRect.setStroke(Color.web("#0078D7"));
         this.selectionRect.getStrokeDashArray().addAll(5.0, 5.0);
         
         context.getDrawingPane().getUiLayer().getChildren().add(selectionRect);

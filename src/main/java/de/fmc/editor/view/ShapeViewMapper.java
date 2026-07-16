@@ -2,6 +2,7 @@ package de.fmc.editor.view;
 
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
+import javafx.scene.paint.Color;
 import javafx.scene.shape.Circle;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
@@ -29,16 +30,16 @@ public class ShapeViewMapper {
             case QUADRAT -> new Rectangle(obj.x() - (obj.width() / 2), obj.y() - (obj.height() / 2), obj.width(), obj.height());
             case WEGPUNKT -> {
                 Circle c = new Circle(obj.x(), obj.y(), obj.width());
-                c.setFill(javafx.scene.paint.Color.YELLOW);
-                c.setStroke(javafx.scene.paint.Color.BLACK);
+                c.setFill(Color.YELLOW);
+                c.setStroke(Color.BLACK);
                 c.setStrokeWidth(1.5);
                 yield c;
             }
         };
 
         if (obj.type() != FmcType.WEGPUNKT) {
-            shape.setFill(javafx.scene.paint.Color.WHITE);
-            shape.setStroke(javafx.scene.paint.Color.BLACK);
+            shape.setFill(Color.WHITE);
+            shape.setStroke(Color.BLACK);
             shape.setStrokeWidth(1.5);
             shape.setMouseTransparent(true);
         } else {

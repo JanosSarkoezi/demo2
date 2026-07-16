@@ -2,6 +2,7 @@ package de.fmc.editor.view;
 
 import javafx.scene.Group;
 import javafx.geometry.Point2D;
+import javafx.scene.input.ScrollEvent;
 import javafx.scene.layout.Pane;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.transform.Scale;
@@ -62,7 +63,7 @@ public class GraphView extends Pane {
         return world.sceneToLocal(sceneX, sceneY);
     }
 
-    public void handleZoom(javafx.scene.input.ScrollEvent event) {
+    public void handleZoom(ScrollEvent event) {
         double delta = event.getDeltaY();
         if (delta == 0.0 || !event.isControlDown()) return;
 

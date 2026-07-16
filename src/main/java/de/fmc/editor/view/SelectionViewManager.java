@@ -1,6 +1,5 @@
 package de.fmc.editor.view;
 
-import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.core.model.Handle;
@@ -10,6 +9,7 @@ import javafx.scene.effect.DropShadow;
 import javafx.scene.paint.Color;
 import javafx.scene.shape.Rectangle;
 import javafx.scene.shape.Shape;
+import javafx.scene.effect.Effect;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.HashSet;
@@ -73,7 +73,7 @@ public class SelectionViewManager {
         }
     }
 
-    private javafx.scene.effect.Effect createGlowEffect() {
+    private Effect createGlowEffect() {
         DropShadow glow = new DropShadow();
         glow.setColor(Color.web("#0078D7"));
         glow.setRadius(15.0);
