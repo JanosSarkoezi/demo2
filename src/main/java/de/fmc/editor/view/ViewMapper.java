@@ -23,7 +23,11 @@ public class ViewMapper implements RegistryListener {
         this.registry = registry;
         this.shapeMapper = new ShapeViewMapper(graphView);
         this.connectionMapper = new ConnectionViewMapper(graphView, registry);
-        this.selectionManager = new SelectionViewManager(graphView, shapeMapper);
+        this.selectionManager = new SelectionViewManager(graphView, shapeMapper, connectionMapper);
+    }
+
+    public void setHover(UUID hoveredObjectId, UUID hoveredConnectionId) {
+        selectionManager.setHover(hoveredObjectId, hoveredConnectionId);
     }
 
     public void setSelectedObjects(Collection<UUID> objectIds) {

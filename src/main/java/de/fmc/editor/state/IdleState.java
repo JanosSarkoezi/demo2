@@ -25,8 +25,8 @@ public class IdleState implements EditorState {
 
         // 3. Einfachklick (nur primäre Maustaste)
         if (event.isPrimaryButtonDown()) {
-            if (handleClickOnConnection(event, context)) return;
             if (handleClickOnObject(event, context)) return;
+            if (handleClickOnConnection(event, context)) return;
             if (handleCtrlClickOnEmpty(event, context)) return;
             if (handleClickOnEmpty(event, context)) return;
         }
@@ -56,7 +56,7 @@ public class IdleState implements EditorState {
             }
 
             // b) Doppelklick auf eine Verbindung → Wegpunkt hinzufügen
-            UUID clickedConnectionId = context.findConnectionAt(event.sceneX(), event.sceneY());
+            UUID clickedConnectionId = context.findConnectionNear(event.worldX(), event.worldY(), 10.0);
             if (clickedConnectionId != null) {
                 handleAddWaypointOnDoubleClick(event, context, clickedConnectionId);
                 return true;
@@ -106,7 +106,7 @@ public class IdleState implements EditorState {
     // -------------------------------------------------------------
     private boolean handleClickOnConnection(InteractionEventData event, CanvasController context) {
         if (event.clickCount() == 1 && event.isPrimaryButtonDown()) {
-            UUID clickedConnectionId = context.findConnectionAt(event.sceneX(), event.sceneY());
+            UUID clickedConnectionId = context.findConnectionNear(event.worldX(), event.worldY(), 10.0);
             if (clickedConnectionId != null) {
                 context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, true);
                 return true;

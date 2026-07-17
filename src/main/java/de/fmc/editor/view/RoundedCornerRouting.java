@@ -68,6 +68,13 @@ public class RoundedCornerRouting implements RoutingStrategy {
             double cosAngle = Math.max(-1.0, Math.min(1.0, dot / (len1 * len2)));
             double angle = Math.acos(cosAngle);  // zwischen 0 und PI
 
+            // NEUER CHECK: Wenn die Punkte (fast) auf einer Geraden liegen, gibt es keine Ecke!
+            if (angle < 1e-4 || angle > (Math.PI - 1e-4)) {
+                path.getElements().add(new LineTo(curr.getX(), curr.getY()));
+                currentPos = curr;
+                continue;
+            }
+
             // Abstand vom Scheitelpunkt bis zu den Tangentialpunkten
             double d = radius * Math.cos(angle / 2.0) / Math.sin(angle / 2.0); // d = r * cot(angle/2)
 

@@ -8,5 +8,6 @@
       onMousePressed="#onMousePressed"
       onMouseDragged="#onMouseDragged"
       onMouseReleased="#onMouseReleased"
+      onMouseMoved="#onMouseMoved"
       onKeyPressed="#onKeyPressed"
       onScroll="#handleScroll" />

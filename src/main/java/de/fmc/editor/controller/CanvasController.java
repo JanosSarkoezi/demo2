@@ -188,6 +188,42 @@ public class CanvasController {
         currentState.handleInput(data, this);
     }
 
+    private UUID currentHoveredObjectId = null;
+    private UUID currentHoveredConnectionId = null;
+
+    @FXML
+    public void onMouseMoved(MouseEvent event) {
+        Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
+        handleHover(worldPos.getX(), worldPos.getY());
+    }
+
+    private void handleHover(double worldX, double worldY) {
+        if (viewMapper == null || registry == null) return;
+
+        // 1. Check objects first (exakt/exact collision)
+        FmcObject hitObj = findObjectAt(worldX, worldY);
+        UUID newHoveredObjId = (hitObj != null) ? hitObj.id() : null;
+
+        UUID newHoveredConnId = null;
+        // 2. If no object hovered, check connections nearby (within tolerance)
+        if (newHoveredObjId == null) {
+            // 8 to 10 pixels tolerance in world coordinates
+            newHoveredConnId = findConnectionNear(worldX, worldY, 10.0);
+        }
+
+        // 3. Update view if hover state changed
+        boolean objectChanged = (currentHoveredObjectId == null && newHoveredObjId != null) ||
+                                (currentHoveredObjectId != null && !currentHoveredObjectId.equals(newHoveredObjId));
+        boolean connectionChanged = (currentHoveredConnectionId == null && newHoveredConnId != null) ||
+                                    (currentHoveredConnectionId != null && !currentHoveredConnectionId.equals(newHoveredConnId));
+
+        if (objectChanged || connectionChanged) {
+            currentHoveredObjectId = newHoveredObjId;
+            currentHoveredConnectionId = newHoveredConnId;
+            viewMapper.setHover(currentHoveredObjectId, currentHoveredConnectionId);
+        }
+    }
+
     @FXML
     public void onKeyPressed(KeyEvent event) {
         // Nur Tasten verarbeiten, wenn keine Texteingabe aktiv ist (z.B. kein TextField)
@@ -230,6 +266,44 @@ public class CanvasController {
             } else if (node instanceof Path path) {
                 if (path.isVisible() && path.contains(path.sceneToLocal(sceneX, sceneY))) {
                     return (UUID) path.getProperties().get("UUID");
+                }
+            }
+        }
+        return null;
+    }
+
+    public UUID findConnectionNear(double worldX, double worldY, double tolerance) {
+        for (var entry : registry.getConnections().entrySet()) {
+            var conn = entry.getValue();
+            var source = registry.getObject(conn.sourceId());
+            var target = registry.getObject(conn.targetId());
+            if (source == null || target == null) continue;
+
+            // Check if connection group is visible (based on layer visibility of source and target)
+            var srcLayer = registry.getLayers().get(source.layerId());
+            var tgtLayer = registry.getLayers().get(target.layerId());
+            if ((srcLayer != null && !srcLayer.visible()) || (tgtLayer != null && !tgtLayer.visible())) {
+                continue;
+            }
+
+            java.util.List<FmcObject> points = new java.util.ArrayList<>();
+            points.add(source);
+            for (UUID wpId : conn.waypointIds()) {
+                FmcObject wp = registry.getObject(wpId);
+                if (wp != null) points.add(wp);
+            }
+            points.add(target);
+
+            for (int i = 0; i < points.size() - 1; i++) {
+                FmcObject p1 = points.get(i);
+                FmcObject p2 = points.get(i + 1);
+                double dist = de.fmc.editor.core.util.GeometryUtils.distanceToSegment(
+                    worldX, worldY,
+                    p1.x(), p1.y(),
+                    p2.x(), p2.y()
+                );
+                if (dist < tolerance) {
+                    return entry.getKey();
                 }
             }
         }
