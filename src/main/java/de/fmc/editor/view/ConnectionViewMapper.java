@@ -204,7 +204,7 @@ public class ConnectionViewMapper {
         double w = obj.width();
         double h = obj.height();
 
-        if (obj.type() == FmcType.KREIS) {
+        if (obj.type() == FmcType.CIRCLE) {
             double r = w / 2.0;
             double dx = fromX - cx;
             double dy = fromY - cy;

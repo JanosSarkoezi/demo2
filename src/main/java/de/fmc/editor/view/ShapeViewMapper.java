@@ -26,9 +26,9 @@ public class ShapeViewMapper {
         }
 
         Shape shape = switch (obj.type()) {
-            case KREIS -> new Circle(obj.x(), obj.y(), obj.width() / 2);
-            case QUADRAT -> new Rectangle(obj.x() - (obj.width() / 2), obj.y() - (obj.height() / 2), obj.width(), obj.height());
-            case WEGPUNKT -> {
+            case CIRCLE -> new Circle(obj.x(), obj.y(), obj.width() / 2);
+            case RECTANGLE -> new Rectangle(obj.x() - (obj.width() / 2), obj.y() - (obj.height() / 2), obj.width(), obj.height());
+            case WAYPOINT -> {
                 Circle c = new Circle(obj.x(), obj.y(), obj.width());
                 c.setFill(Color.YELLOW);
                 c.setStroke(Color.BLACK);
@@ -37,7 +37,7 @@ public class ShapeViewMapper {
             }
         };
 
-        if (obj.type() != FmcType.WEGPUNKT) {
+        if (obj.type() != FmcType.WAYPOINT) {
             shape.setFill(Color.WHITE);
             shape.setStroke(Color.BLACK);
             shape.setStrokeWidth(1.5);

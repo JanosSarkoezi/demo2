@@ -35,6 +35,8 @@ public enum Shortcut {
          new KeyCodeCombination(KeyCode.DIGIT2, KeyCombination.ALT_DOWN)),
     TOOL_CONNECTION("Verbindungs-Werkzeug", 
          new KeyCodeCombination(KeyCode.DIGIT3, KeyCombination.ALT_DOWN)),
+    TOOL_TEXT("Text-Werkzeug", 
+         new KeyCodeCombination(KeyCode.DIGIT4, KeyCombination.ALT_DOWN)),
 
     // --- State-spezifische Shortcuts ---
     CANCEL("Abbrechen", 

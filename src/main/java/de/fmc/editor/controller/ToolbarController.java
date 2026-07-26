@@ -1,17 +1,18 @@
 package de.fmc.editor.controller;
 
 import de.fmc.editor.core.CoreRegistry;
+import de.fmc.editor.core.command.UpdateTextCommand;
 import de.fmc.editor.core.model.FmcType;
+import de.fmc.editor.core.model.FmcText;
 import de.fmc.editor.core.persistence.PersistenceService;
 import javafx.event.ActionEvent;
 import javafx.fxml.FXML;
-import javafx.scene.control.CheckBox;
-import javafx.scene.control.ToggleButton;
-import javafx.scene.control.ToggleGroup;
+import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
 import javafx.stage.FileChooser;
 
 import java.io.FileWriter;
+import java.util.UUID;
 
 public class ToolbarController {
 
@@ -31,16 +32,50 @@ public class ToolbarController {
     private CheckBox waypointsCheckbox;
     @FXML
     private CheckBox stickyCheckbox;
+    @FXML
+    private ToggleButton textButton;
+    @FXML
+    private ComboBox<String> fontFamilyCombo;
+    @FXML
+    private Spinner<Integer> fontSizeSpinner;
+    @FXML
+    private CheckBox boldCheckbox;
+    @FXML
+    private CheckBox italicCheckbox;
+    @FXML
+    private ColorPicker textColorPicker;
 
     private CanvasController canvasController;
+
+    @FXML
+    public void initialize() {
+        if (fontFamilyCombo != null) {
+            fontFamilyCombo.getItems().addAll("System", "Arial", "Courier New", "Georgia", "Times New Roman", "Verdana");
+            fontFamilyCombo.setValue("System");
+            fontFamilyCombo.setOnAction(this::onTextAttributesChanged);
+        }
+        if (fontSizeSpinner != null) {
+            fontSizeSpinner.setValueFactory(new SpinnerValueFactory.IntegerSpinnerValueFactory(8, 72, 14));
+            fontSizeSpinner.valueProperty().addListener((obs, oldVal, newVal) -> applyTextAttributesToSelection());
+        }
+        if (boldCheckbox != null) {
+            boldCheckbox.setOnAction(this::onTextAttributesChanged);
+        }
+        if (italicCheckbox != null) {
+            italicCheckbox.setOnAction(this::onTextAttributesChanged);
+        }
+        if (textColorPicker != null) {
+            textColorPicker.setOnAction(this::onTextAttributesChanged);
+        }
+    }
 
     public void setCanvasController(CanvasController canvasController) {
         this.canvasController = canvasController;
     }
 
     public FmcType getSelectedType() {
-        if (circleButton.isSelected()) return FmcType.KREIS;
-        if (rectButton.isSelected()) return FmcType.QUADRAT;
+        if (circleButton.isSelected()) return FmcType.CIRCLE;
+        if (rectButton.isSelected()) return FmcType.RECTANGLE;
         return null;
     }
 
@@ -98,6 +133,15 @@ public class ToolbarController {
     }
 
     @FXML
+    public void onTextClick(ActionEvent event) {
+        if (textButton.isSelected()) {
+            canvasController.setActiveTool(Tool.TEXT_CREATE);
+        } else {
+            canvasController.setActiveTool(Tool.SELECT);
+        }
+    }
+
+    @FXML
     public void onSnapToGridAction(ActionEvent event) {
         // Handle snap to grid setting
     }
@@ -147,6 +191,38 @@ public class ToolbarController {
             case CIRCLE_CREATE -> circleButton.setSelected(true);
             case RECTANGLE_CREATE -> rectButton.setSelected(true);
             case CONNECTION_CREATE -> connectButton.setSelected(true);
+            case TEXT_CREATE -> textButton.setSelected(true);
+        }
+    }
+
+    @FXML
+    public void onTextAttributesChanged(ActionEvent event) {
+        applyTextAttributesToSelection();
+    }
+
+    public void applyTextAttributesToSelection() {
+        if (canvasController == null) return;
+        var selectedTextIds = canvasController.getSelectionModel().getSelectedTextIds();
+        if (selectedTextIds.isEmpty()) return;
+
+        String family = fontFamilyCombo.getValue() != null ? fontFamilyCombo.getValue() : "System";
+        double size = fontSizeSpinner.getValue() != null ? fontSizeSpinner.getValue().doubleValue() : 14.0;
+        String weight = boldCheckbox.isSelected() ? "bold" : "normal";
+        String style = italicCheckbox.isSelected() ? "italic" : "normal";
+        String color = "#" + textColorPicker.getValue().toString().substring(2, 8);
+
+        for (UUID id : selectedTextIds) {
+            FmcText old = canvasController.getRegistry().getText(id);
+            if (old != null) {
+                var updated = new FmcText(
+                        old.id(), old.text(), old.x(), old.y(), old.width(),
+                        family, size, weight, style, color,
+                        old.parentObjectId(), old.layerId()
+                );
+                // Hier der entscheidende Unterschied: jetzt mit alt und neu
+                var cmd = new UpdateTextCommand(canvasController.getRegistry(), old, updated);
+                canvasController.getCommandHistory().executeCommand(cmd);
+            }
         }
     }
 }

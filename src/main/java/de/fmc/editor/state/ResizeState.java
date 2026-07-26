@@ -2,6 +2,8 @@ package de.fmc.editor.state;
 
 import de.fmc.editor.controller.CanvasController;
 import de.fmc.editor.core.command.ResizeObjectCommand;
+import de.fmc.editor.core.event.EventBus;
+import de.fmc.editor.core.event.EditorActionEvent;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
 import de.fmc.editor.core.model.Handle;
@@ -12,6 +14,7 @@ import java.util.UUID;
 
 public class ResizeState implements EditorState {
     private final UUID targetObjectId;
+    private final EventBus eventBus;
     private HandleType activeHandle = null;
     private double lastMouseX;
     private double lastMouseY;
@@ -23,7 +26,12 @@ public class ResizeState implements EditorState {
     private boolean isResizing = false;
 
     public ResizeState(UUID targetObjectId) {
+        this(targetObjectId, null);
+    }
+
+    public ResizeState(UUID targetObjectId, EventBus eventBus) {
         this.targetObjectId = targetObjectId;
+        this.eventBus = eventBus;
     }
 
     @Override
@@ -44,13 +52,21 @@ public class ResizeState implements EditorState {
     public void handleInput(InteractionEventData event, CanvasController context) {
         // ESC -> cancel or return to tool
         if (event.activeKey().isPresent() && event.activeKey().get() == KeyCode.ESCAPE) {
-            context.reactivateCurrentTool();
+            if (eventBus != null) {
+                eventBus.publish(new EditorActionEvent.ReactivateTool());
+            } else {
+                context.reactivateCurrentTool();
+            }
             return;
         }
 
         FmcObject obj = getTargetObject(context);
         if (obj == null) {
-            context.reactivateCurrentTool();
+            if (eventBus != null) {
+                eventBus.publish(new EditorActionEvent.ReactivateTool());
+            } else {
+                context.reactivateCurrentTool();
+            }
             return;
         }
 
@@ -74,15 +90,27 @@ public class ResizeState implements EditorState {
                     if (hit != null) {
                         if (hit.id().equals(targetObjectId)) {
                             // Clicked on target (not handle) -> back to tool, let it handle the event (drag)
-                            context.reactivateCurrentTool();
+                            if (eventBus != null) {
+                                eventBus.publish(new EditorActionEvent.ReactivateTool());
+                            } else {
+                                context.reactivateCurrentTool();
+                            }
                             context.getCurrentState().handleInput(event, context);
                         } else {
                             // Clicked on different object -> Resize that instead
-                            context.setCurrentState(new ResizeState(hit.id()));
+                            if (eventBus != null) {
+                                eventBus.publish(new EditorActionEvent.ChangeState(new ResizeState(hit.id(), eventBus)));
+                            } else {
+                                context.setCurrentState(new ResizeState(hit.id()));
+                            }
                         }
                     } else {
                         // Clicked into empty space -> Cancel resize and go to standard tool
-                        context.reactivateCurrentTool();
+                        if (eventBus != null) {
+                            eventBus.publish(new EditorActionEvent.ReactivateTool());
+                        } else {
+                            context.reactivateCurrentTool();
+                        }
                     }
                 }
             } else {
@@ -104,7 +132,7 @@ public class ResizeState implements EditorState {
                     case NW -> { newW -= deltaX * 2; newH -= deltaY * 2; }
                 }
 
-                if (obj.type() == FmcType.KREIS) {
+                if (obj.type() == FmcType.CIRCLE) {
                     double absDeltaX = Math.abs(deltaX);
                     double absDeltaY = Math.abs(deltaY);
                     
@@ -118,12 +146,16 @@ public class ResizeState implements EditorState {
                 newW = Math.max(10, newW);
                 newH = Math.max(10, newH);
 
-                if (obj.type() == FmcType.KREIS) {
+                if (obj.type() == FmcType.CIRCLE) {
                     newW = Math.max(newW, newH);
                     newH = newW;
                 }
 
-                context.getRegistry().resizeObject(targetObjectId, newW, newH);
+                if (eventBus != null) {
+                    eventBus.publish(new EditorActionEvent.ResizeObject(targetObjectId, newW, newH));
+                } else {
+                    context.getRegistry().resizeObject(targetObjectId, newW, newH);
+                }
                 lastKnownW = newW;
                 lastKnownH = newH;
                 
@@ -138,10 +170,14 @@ public class ResizeState implements EditorState {
             isResizing = false;
             if (activeHandle != null) {
                 if (startW != lastKnownW || startH != lastKnownH) {
-                    var cmd = new ResizeObjectCommand(
-                        context.getRegistry(), targetObjectId, startW, startH, lastKnownW, lastKnownH
-                    );
-                    context.getCommandHistory().executeCommand(cmd);
+                    if (eventBus != null) {
+                        eventBus.publish(new EditorActionEvent.CommitResize(targetObjectId, startW, startH, lastKnownW, lastKnownH));
+                    } else {
+                        var cmd = new ResizeObjectCommand(
+                            context.getRegistry(), targetObjectId, startW, startH, lastKnownW, lastKnownH
+                        );
+                        context.getCommandHistory().executeCommand(cmd);
+                    }
                 }
             }
             activeHandle = null;

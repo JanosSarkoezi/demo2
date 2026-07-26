@@ -6,6 +6,7 @@ import de.fmc.editor.core.factory.FmcFactory;
 import de.fmc.editor.core.model.Connection;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.Layer;
+import de.fmc.editor.core.model.FmcText;
 import de.fmc.editor.core.persistence.DiagramData;
 
 import java.util.ArrayList;
@@ -23,6 +24,7 @@ public class CoreRegistry {
     private final Map<UUID, FmcObject> objects = new HashMap<>();
     private final Map<UUID, Connection> connections = new HashMap<>();
     private final Map<UUID, Layer> layers = new HashMap<>();
+    private final Map<UUID, FmcText> texts = new HashMap<>();
     private final List<RegistryListener> listeners = new ArrayList<>();
 
     public CoreRegistry() {
@@ -52,9 +54,25 @@ public class CoreRegistry {
         if (original != null) {
             // Nur ändern, wenn wirklich eine Bewegung stattfindet
             if (original.x() != newX || original.y() != newY) {
+                double deltaX = newX - original.x();
+                double deltaY = newY - original.y();
                 FmcObject updated = FmcFactory.moveObject(original, newX, newY);
                 objects.put(id, updated);
                 fireEvent(new RegistryEvent.ObjectMoved(id, newX, newY));
+
+                // Alle assoziierten Texte mitverschieben
+                for (FmcText text : new ArrayList<>(texts.values())) {
+                    if (id.equals(text.parentObjectId())) {
+                        FmcText movedText = new FmcText(
+                            text.id(), text.text(),
+                            text.x() + deltaX, text.y() + deltaY,
+                            text.width(), text.fontFamily(), text.fontSize(),
+                            text.fontWeight(), text.fontStyle(), text.textFill(),
+                            text.parentObjectId(), text.layerId()
+                        );
+                        updateText(text.id(), movedText);
+                    }
+                }
             }
         }
     }
@@ -73,6 +91,13 @@ public class CoreRegistry {
     public void removeObject(UUID id) {
         if (objects.containsKey(id)) {
             objects.remove(id);
+            
+            // Assoziierte Texte löschen
+            List<UUID> textsToRemove = texts.values().stream()
+                .filter(t -> id.equals(t.parentObjectId()))
+                .map(FmcText::id)
+                .toList();
+            textsToRemove.forEach(this::removeText);
             
             // 1. Verbindungen finden, die dieses Objekt als Source oder Target nutzen -> Löschen
             List<UUID> toRemove = connections.entrySet().stream()
@@ -122,13 +147,6 @@ public class CoreRegistry {
 
     public UUID addConnection(UUID sourceId, UUID targetId, List<UUID> waypointIds) {
         if (!validateConnection(sourceId, targetId)) return null;
-
-        // Validierung: Keine doppelten Verbindungen (A -> B oder B -> A)
-//        boolean connectionExists = connections.values().stream().anyMatch(c ->
-//            (c.sourceId().equals(sourceId) && c.targetId().equals(targetId)) ||
-//            (c.sourceId().equals(targetId) && c.targetId().equals(sourceId))
-//        );
-//        if (connectionExists) return null;
 
         UUID connId = UUID.randomUUID();
         Connection connection = new Connection(sourceId, targetId, new ArrayList<>(waypointIds));
@@ -191,7 +209,8 @@ public class CoreRegistry {
         return new DiagramData(
             new ArrayList<>(objects.values()),
             new HashMap<>(connections),
-            new ArrayList<>(layers.values())
+            new ArrayList<>(layers.values()),
+            new ArrayList<>(texts.values())
         );
     }
 
@@ -199,6 +218,7 @@ public class CoreRegistry {
         objects.clear();
         connections.clear();
         layers.clear();
+        texts.clear();
 
         if (data.objects() != null) {
             data.objects().forEach(obj -> objects.put(obj.id(), obj));
@@ -209,7 +229,37 @@ public class CoreRegistry {
         if (data.layers() != null) {
             data.layers().forEach(layer -> layers.put(layer.id(), layer));
         }
+        if (data.texts() != null) {
+            data.texts().forEach(text -> texts.put(text.id(), text));
+        }
 
         fireEvent(new RegistryEvent.RegistryReset());
+    }
+
+    public void addText(FmcText text) {
+        texts.put(text.id(), text);
+        fireEvent(new RegistryEvent.TextAdded(text));
+    }
+
+    public void removeText(UUID id) {
+        if (texts.containsKey(id)) {
+            texts.remove(id);
+            fireEvent(new RegistryEvent.TextRemoved(id));
+        }
+    }
+
+    public void updateText(UUID id, FmcText updatedText) {
+        if (texts.containsKey(id)) {
+            texts.put(id, updatedText);
+            fireEvent(new RegistryEvent.TextUpdated(id, updatedText));
+        }
+    }
+
+    public Collection<FmcText> getTexts() {
+        return Collections.unmodifiableCollection(texts.values());
+    }
+
+    public FmcText getText(UUID id) {
+        return texts.get(id);
     }
 }

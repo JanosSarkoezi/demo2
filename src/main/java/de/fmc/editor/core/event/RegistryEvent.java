@@ -3,6 +3,7 @@ package de.fmc.editor.core.event;
 import java.util.UUID;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.Connection;
+import de.fmc.editor.core.model.FmcText;
 import de.fmc.editor.core.model.Layer;
 
 public sealed interface RegistryEvent {
@@ -18,6 +19,10 @@ public sealed interface RegistryEvent {
     record LayerAdded(Layer layer) implements RegistryEvent {}
     record LayerRemoved(UUID id) implements RegistryEvent {}
     record LayerVisibilityChanged(UUID id, boolean visible) implements RegistryEvent {}
+
+    record TextAdded(FmcText text) implements RegistryEvent {}
+    record TextRemoved(UUID id) implements RegistryEvent {}
+    record TextUpdated(UUID id, FmcText text) implements RegistryEvent {}
 
     record RegistryReset() implements RegistryEvent {}
 }

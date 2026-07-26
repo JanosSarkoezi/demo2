@@ -99,6 +99,12 @@ public class SelectionViewManager {
             if (connectionMapper != null) {
                 Group group = connectionMapper.getVisualConnections().get(this.currentHoveredConnectionId);
                 if (group != null && !group.getChildren().isEmpty() && group.getChildren().get(0) instanceof javafx.scene.shape.Path path) {
+                    DropShadow hoverGlow = new DropShadow();
+                    hoverGlow.setColor(Color.web("#808080"));
+                    hoverGlow.setRadius(10.0);
+                    hoverGlow.setSpread(0.2);
+
+                    path.setEffect(hoverGlow);
                     path.setStroke(Color.web("#808080"));
                     path.setStrokeWidth(2.5);
                 }
@@ -165,7 +171,7 @@ public class SelectionViewManager {
         double hw = obj.width() / 2;
         double hh = obj.height() / 2;
 
-        if (obj.type() == FmcType.QUADRAT) {
+        if (obj.type() == FmcType.RECTANGLE) {
             handles.add(new Handle(HandleType.NW, obj.x() - hw, obj.y() - hh));
             handles.add(new Handle(HandleType.N,  obj.x(),      obj.y() - hh));
             handles.add(new Handle(HandleType.NE, obj.x() + hw, obj.y() - hh));
@@ -174,7 +180,7 @@ public class SelectionViewManager {
             handles.add(new Handle(HandleType.S,  obj.x(),      obj.y() + hh));
             handles.add(new Handle(HandleType.SW, obj.x() - hw, obj.y() + hh));
             handles.add(new Handle(HandleType.W,  obj.x() - hw, obj.y()));
-        } else if (obj.type() == FmcType.KREIS) {
+        } else if (obj.type() == FmcType.CIRCLE) {
             handles.add(new Handle(HandleType.N, obj.x(),      obj.y() - hh));
             handles.add(new Handle(HandleType.E, obj.x() + hw, obj.y()));
             handles.add(new Handle(HandleType.S, obj.x(),      obj.y() + hh));

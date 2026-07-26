@@ -535,23 +535,24 @@ Damit das reibungslos funktioniert, passen wir nun die Event-Verarbeitung an.
 Wir **entfernen** die `setOnMousePressed` und `setOnMouseDragged` Listener von den Shapes. Die Shapes dienen rein der visuellen Repräsentation. Wir müssen jedoch sicherstellen, dass die Shapes Mausklicks **durchlassen**, damit unsere `GraphView` (die Pane) im `CanvasController` alle Events abfangen kann.
 
 Ergänze/ändere in `handleObjectAdded`:
+
 ```java
 private void handleObjectAdded(de.fmc.editor.core.model.FmcObject obj) {
-    Shape shape = switch (obj.type()) {
-        case KREIS -> new Circle(obj.x(), obj.y(), 20);
-        case QUADRAT -> new javafx.scene.shape.Rectangle(obj.x() - 15, obj.y() - 15, 30, 30);
-        case WEGPUNKT -> new Circle(obj.x(), obj.y(), 5);
-    };
+   Shape shape = switch (obj.type()) {
+      case CIRCLE -> new Circle(obj.x(), obj.y(), 20);
+      case RECTANGLE -> new javafx.scene.shape.Rectangle(obj.x() - 15, obj.y() - 15, 30, 30);
+      case WAYPOINT -> new Circle(obj.x(), obj.y(), 5);
+   };
 
-    shape.setFill(javafx.scene.paint.Color.WHITE);
-    shape.setStroke(javafx.scene.paint.Color.BLACK);
-    shape.setStrokeWidth(1.5);
+   shape.setFill(javafx.scene.paint.Color.WHITE);
+   shape.setStroke(javafx.scene.paint.Color.BLACK);
+   shape.setStrokeWidth(1.5);
 
-    // WICHTIG: Erlaubt es der darunterliegenden Canvas-Pane, Klicks zu empfangen!
-    shape.setMouseTransparent(true); 
+   // WICHTIG: Erlaubt es der darunterliegenden Canvas-Pane, Klicks zu empfangen!
+   shape.setMouseTransparent(true);
 
-    visualNodes.put(obj.id(), shape);
-    canvas.getChildren().add(shape);
+   visualNodes.put(obj.id(), shape);
+   canvas.getChildren().add(shape);
 }
 ```
 
@@ -571,71 +572,71 @@ import javafx.scene.input.MouseEvent;
 
 public class CanvasController {
 
-    @FXML
-    private GraphView drawingPane;
+   @FXML
+   private GraphView drawingPane;
 
-    private CoreRegistry registry;
-    private ToolbarController toolbarController;
-    
-    // Aktueller Zustand der State Machine
-    private EditorState currentState = new SelectOrMoveState();
+   private CoreRegistry registry;
+   private ToolbarController toolbarController;
 
-    public void setRegistry(CoreRegistry registry) {
-        this.registry = registry;
-    }
+   // Aktueller Zustand der State Machine
+   private EditorState currentState = new SelectOrMoveState();
 
-    public void setToolbarController(ToolbarController toolbarController) {
-        this.toolbarController = toolbarController;
-    }
+   public void setRegistry(CoreRegistry registry) {
+      this.registry = registry;
+   }
 
-    public void setCurrentState(EditorState currentState) {
-        this.currentState = currentState;
-    }
+   public void setToolbarController(ToolbarController toolbarController) {
+      this.toolbarController = toolbarController;
+   }
 
-    public CoreRegistry getRegistry() {
-        return registry;
-    }
+   public void setCurrentState(EditorState currentState) {
+      this.currentState = currentState;
+   }
 
-    public ToolbarController getToolbarController() {
-        return toolbarController;
-    }
+   public CoreRegistry getRegistry() {
+      return registry;
+   }
 
-    @FXML
-    public void onMousePressed(MouseEvent event) {
-        currentState.handleMousePressed(event, this);
-    }
+   public ToolbarController getToolbarController() {
+      return toolbarController;
+   }
 
-    @FXML
-    public void onMouseDragged(MouseEvent event) {
-        currentState.handleMouseDragged(event, this);
-    }
+   @FXML
+   public void onMousePressed(MouseEvent event) {
+      currentState.handleMousePressed(event, this);
+   }
 
-    @FXML
-    public void onMouseReleased(MouseEvent event) {
-        currentState.handleMouseReleased(event, this);
-    }
+   @FXML
+   public void onMouseDragged(MouseEvent event) {
+      currentState.handleMouseDragged(event, this);
+   }
 
-    /**
-     * Schaut im Modell nach, ob an den Koordinaten (x,y) ein Objekt existiert.
-     */
-    public FmcObject findObjectAt(double x, double y) {
-        return registry.getObjects().stream()
-            .filter(obj -> {
-                // Mathematische Hitbox-Prüfung basierend auf den Maßen im ViewMapper
-                if (obj.type() == de.fmc.editor.core.model.FmcType.KREIS) {
+   @FXML
+   public void onMouseReleased(MouseEvent event) {
+      currentState.handleMouseReleased(event, this);
+   }
+
+   /**
+    * Schaut im Modell nach, ob an den Koordinaten (x,y) ein Objekt existiert.
+    */
+   public FmcObject findObjectAt(double x, double y) {
+      return registry.getObjects().stream()
+              .filter(obj -> {
+                 // Mathematische Hitbox-Prüfung basierend auf den Maßen im ViewMapper
+                 if (obj.type() == de.fmc.editor.core.model.FmcType.CIRCLE) {
                     double dx = obj.x() - x;
                     double dy = obj.y() - y;
                     return (dx * dx + dy * dy) <= (20 * 20); // Radius 20 aus ViewMapper
-                } else if (obj.type() == de.fmc.editor.core.model.FmcType.QUADRAT) {
+                 } else if (obj.type() == de.fmc.editor.core.model.FmcType.RECTANGLE) {
                     // Quadrat Kantenlänge 30, zentriert um x/y im Modell
                     return x >= (obj.x() - 15) && x <= (obj.x() + 15) &&
-                           y >= (obj.y() - 15) && y <= (obj.y() + 15);
-                }
-                return false;
-            })
-            .findFirst()
-            .orElse(null);
-    }
+                            y >= (obj.y() - 15) && y <= (obj.y() + 15);
+                 }
+                 return false;
+              })
+              .findFirst()
+              .orElse(null);
+   }
 }
 ```
 

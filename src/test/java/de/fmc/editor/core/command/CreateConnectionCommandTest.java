@@ -8,7 +8,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.util.Collections;
-import java.util.UUID;
 
 import static org.junit.jupiter.api.Assertions.*;
 
@@ -21,8 +20,8 @@ public class CreateConnectionCommandTest {
     @BeforeEach
     public void setUp() {
         registry = new CoreRegistry();
-        source = FmcFactory.createObject(FmcType.KREIS, 0, 0, CoreRegistry.DEFAULT_LAYER_ID);
-        target = FmcFactory.createObject(FmcType.QUADRAT, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
+        source = FmcFactory.createObject(FmcType.CIRCLE, 0, 0, CoreRegistry.DEFAULT_LAYER_ID);
+        target = FmcFactory.createObject(FmcType.RECTANGLE, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
         registry.addObject(source);
         registry.addObject(target);
     }
@@ -64,7 +63,7 @@ public class CreateConnectionCommandTest {
     @Test
     public void testExecuteSameTypeFailure() {
         // Create another circle
-        FmcObject anotherCircle = FmcFactory.createObject(FmcType.KREIS, 200, 200, CoreRegistry.DEFAULT_LAYER_ID);
+        FmcObject anotherCircle = FmcFactory.createObject(FmcType.CIRCLE, 200, 200, CoreRegistry.DEFAULT_LAYER_ID);
         registry.addObject(anotherCircle);
 
         // Attempt to connect Kreis with Kreis

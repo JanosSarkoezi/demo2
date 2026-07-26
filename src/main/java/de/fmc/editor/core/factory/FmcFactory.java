@@ -8,9 +8,9 @@ public class FmcFactory {
     public static FmcObject createObject(FmcType type, double x, double y, UUID layerId) {
         UUID id = UUID.randomUUID();
         return switch (type) {
-            case KREIS -> new FmcObject(id, type, x, y, 40, 40, layerId);
-            case QUADRAT -> new FmcObject(id, type, x, y, 30, 30, layerId);
-            case WEGPUNKT -> new FmcObject(id, type, x, y, 10 , 10, layerId);
+            case CIRCLE -> new FmcObject(id, type, x, y, 40, 40, layerId);
+            case RECTANGLE -> new FmcObject(id, type, x, y, 30, 30, layerId);
+            case WAYPOINT -> new FmcObject(id, type, x, y, 10 , 10, layerId);
         };
     }
 

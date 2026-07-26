@@ -12,6 +12,8 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.VBox;
 
+import java.util.ArrayList;
+
 public class MainController {
     @FXML
     private VBox toolbar;
@@ -45,8 +47,8 @@ public class MainController {
         canvasController.setViewMapper(viewMapper);
 
         // --- Demo-Daten für Etappe 4 ---
-        var k1 = FmcFactory.createObject(FmcType.KREIS, 200, 200, CoreRegistry.DEFAULT_LAYER_ID);
-        var q1 = FmcFactory.createObject(FmcType.QUADRAT, 400, 200, CoreRegistry.DEFAULT_LAYER_ID);
+        var k1 = FmcFactory.createObject(FmcType.CIRCLE, 200, 200, CoreRegistry.DEFAULT_LAYER_ID);
+        var q1 = FmcFactory.createObject(FmcType.RECTANGLE, 400, 200, CoreRegistry.DEFAULT_LAYER_ID);
         registry.addObject(k1);
         registry.addObject(q1);
         registry.addConnection(k1.id(), q1.id(), java.util.Collections.emptyList());
@@ -68,6 +70,7 @@ public class MainController {
         Shortcut.TOOL_CIRCLE.register(accelerators, () -> switchTool(Tool.CIRCLE_CREATE));
         Shortcut.TOOL_RECTANGLE.register(accelerators, () -> switchTool(Tool.RECTANGLE_CREATE));
         Shortcut.TOOL_CONNECTION.register(accelerators, () -> switchTool(Tool.CONNECTION_CREATE));
+        Shortcut.TOOL_TEXT.register(accelerators, () -> switchTool(Tool.TEXT_CREATE));
 
         scene.addEventFilter(KeyEvent.KEY_PRESSED, event -> {
             if (event.getCode() == KeyCode.ESCAPE) {
@@ -78,27 +81,21 @@ public class MainController {
     }
 
     private void deleteSelected() {
-        var selectedIds = canvasController.getSelectedObjectIds();
-        if (!selectedIds.isEmpty()) {
+        if (!canvasController.getSelectionModel().isEmpty()) {
             var cmd = new DeleteSelectedCommand(
-                canvasController.getRegistry(), 
-                new java.util.ArrayList<>(selectedIds)
+                    canvasController.getRegistry(),
+                    canvasController.getSelectionModel()
             );
             canvasController.getCommandHistory().executeCommand(cmd);
-            
-            // Auswahl leeren
-            selectedIds.clear();
-            canvasController.updateSelectionInView();
         }
     }
 
     private void selectAll() {
         var allIds = canvasController.getRegistry().getObjects().stream()
-            .map(FmcObject::id)
-            .toList();
-        canvasController.getSelectedObjectIds().clear();
-        canvasController.getSelectedObjectIds().addAll(allIds);
-        canvasController.updateSelectionInView();
+                .map(FmcObject::id)
+                .toList();
+        canvasController.getSelectionModel().clearAll();
+        canvasController.getSelectionModel().addAllObjectsToSelection(allIds);
     }
 
     private void saveDiagram() {

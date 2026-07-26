@@ -3,9 +3,13 @@ package de.fmc.editor.state;
 import de.fmc.editor.controller.CanvasController;
 import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.command.AddWaypointCommand;
+import de.fmc.editor.core.event.EventBus;
+import de.fmc.editor.core.event.EditorActionEvent;
 import de.fmc.editor.core.factory.FmcFactory;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
+import de.fmc.editor.core.model.FmcText;
+import de.fmc.editor.core.model.SelectionModel;
 import de.fmc.editor.core.util.GeometryUtils;
 import javafx.scene.input.KeyCode;
 
@@ -15,65 +19,165 @@ import java.util.UUID;
 
 public class IdleState implements EditorState {
 
-    @Override
-    public void handleInput(InteractionEventData event, CanvasController context) {
-        // 1. ESC – immer höchste Priorität
-        if (handleEscape(event, context)) return;
+    private final EventBus eventBus;
+    private InteractionMap bindings;
 
-        // 2. Doppelklick – vor Einfachklick
-        if (handleDoubleClick(event, context)) return;
-
-        // 3. Einfachklick (nur primäre Maustaste)
-        if (event.isPrimaryButtonDown()) {
-            if (handleClickOnObject(event, context)) return;
-            if (handleClickOnConnection(event, context)) return;
-            if (handleCtrlClickOnEmpty(event, context)) return;
-            if (handleClickOnEmpty(event, context)) return;
-        }
+    public IdleState() {
+        this(null);
     }
 
-    // -------------------------------------------------------------
-    // 1. ESC – Tool reaktivieren
-    // -------------------------------------------------------------
-    private boolean handleEscape(InteractionEventData event, CanvasController context) {
-        if (event.activeKey().isPresent() && event.activeKey().get() == KeyCode.ESCAPE) {
-            context.reactivateCurrentTool();
-            return true;
-        }
-        return false;
+    public IdleState(EventBus eventBus) {
+        this.eventBus = eventBus;
     }
 
-    // -------------------------------------------------------------
-    // 2. Doppelklick – Objekt skalieren oder Wegpunkt hinzufügen
-    // -------------------------------------------------------------
-    private boolean handleDoubleClick(InteractionEventData event, CanvasController context) {
-        if (event.clickCount() == 2 && event.isPrimaryButtonDown()) {
-            // a) Doppelklick auf ein Objekt (kein Wegpunkt) → ResizeState
-            FmcObject hit = context.findObjectAt(event.worldX(), event.worldY());
-            if (hit != null && hit.type() != FmcType.WEGPUNKT) {
-                context.setCurrentState(new ResizeState(hit.id()));
-                return true;
+    private void initBindings(CanvasController context) {
+        if (bindings != null) return;
+
+        bindings = new InteractionMap();
+
+        // 1. ESC – Tool reaktivieren
+        bindings.on(EventMatcher.keyPressed(KeyCode.ESCAPE), event -> {
+            if (eventBus != null) {
+                eventBus.publish(new EditorActionEvent.ReactivateTool());
+            } else {
+                context.reactivateCurrentTool();
+            }
+        });
+
+        // 2. Doppelklick Aktionen
+        bindings.on(EventMatcher.primaryDoubleClick(), event -> {
+            // a) Doppelklick auf einen Text → EditTextState
+            FmcText hitText = context.findTextAt(event.worldX(), event.worldY());
+            if (hitText != null) {
+                if (eventBus != null) {
+                    eventBus.publish(new EditorActionEvent.ChangeState(new EditTextState(hitText.id())));
+                } else {
+                    context.setCurrentState(new EditTextState(hitText.id()));
+                }
+                return;
             }
 
-            // b) Doppelklick auf eine Verbindung → Wegpunkt hinzufügen
+            // b) Doppelklick auf ein Objekt (kein Wegpunkt) → ResizeState
+            FmcObject hit = context.findObjectAt(event.worldX(), event.worldY());
+            if (hit != null && hit.type() != FmcType.WAYPOINT) {
+                if (eventBus != null) {
+                    eventBus.publish(new EditorActionEvent.ChangeState(new ResizeState(hit.id(), eventBus)));
+                } else {
+                    context.setCurrentState(new ResizeState(hit.id()));
+                }
+                return;
+            }
+
+            // c) Doppelklick auf eine Verbindung → Wegpunkt hinzufügen
             UUID clickedConnectionId = context.findConnectionNear(event.worldX(), event.worldY(), 10.0);
             if (clickedConnectionId != null) {
-                handleAddWaypointOnDoubleClick(event, context, clickedConnectionId);
-                return true;
+                if (eventBus != null) {
+                    eventBus.publish(new EditorActionEvent.AddWaypoint(clickedConnectionId, event.worldX(), event.worldY()));
+                } else {
+                    handleAddWaypointOnDoubleClick(event, context, clickedConnectionId);
+                }
             }
+        });
+
+        // 3. Wegpunkte einblenden bei einfachem Klick auf eine Verbindung (ohne Drag-Start)
+        bindings.on(
+            EventMatcher.primaryClick().and(event -> context.findConnectionNear(event.worldX(), event.worldY(), 10.0) != null),
+            event -> {
+                if (eventBus != null) {
+                    eventBus.publish(new EditorActionEvent.SetLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, true));
+                } else {
+                    context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, true);
+                }
+            }
+        );
+
+        // 4. Drag Aktionen (Continuous Events)
+        
+        // a) Drag auf Text -> Text verschieben
+        bindings.onDrag(
+            EventMatcher.primaryClick().and(event -> context.findTextAt(event.worldX(), event.worldY()) != null),
+            startEvent -> {
+                FmcText hitText = context.findTextAt(startEvent.worldX(), startEvent.worldY());
+                if (hitText != null) {
+                    handleTextSelection(startEvent, context, hitText);
+                    return new MoveTextDragHandler(hitText.id(), context);
+                }
+                return null;
+            }
+        );
+
+        // b) Drag auf Objekt -> Objekte verschieben
+        bindings.onDrag(
+            EventMatcher.primaryClick().and(event -> context.findObjectAt(event.worldX(), event.worldY()) != null),
+            startEvent -> {
+                FmcObject hit = context.findObjectAt(startEvent.worldX(), startEvent.worldY());
+                if (hit != null) {
+                    handleSelection(startEvent, context, hit);
+                    return new MoveObjectsDragHandler(hit.id(), context);
+                }
+                return null;
+            }
+        );
+
+        // c) Ctrl + Drag ins Leere -> BoxSelection (Rechteck aufspannen)
+        bindings.onDrag(
+            EventMatcher.primaryClick().and(event -> event.isControlDown() &&
+                context.findObjectAt(event.worldX(), event.worldY()) == null &&
+                context.findTextAt(event.worldX(), event.worldY()) == null),
+            startEvent -> new BoxSelectionDragHandler(context)
+        );
+
+        // d) Normaler Drag ins Leere -> Panning (Kamera bewegen) + Auswahl leeren
+        bindings.onDrag(
+            EventMatcher.primaryClick().and(event -> !event.isControlDown() &&
+                context.findObjectAt(event.worldX(), event.worldY()) == null &&
+                context.findTextAt(event.worldX(), event.worldY()) == null),
+            startEvent -> {
+                // Auswahl leeren bei Klick ins Leere
+                if (eventBus != null) {
+                    eventBus.publish(new EditorActionEvent.ClearSelection());
+                    eventBus.publish(new EditorActionEvent.SetLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false));
+                } else {
+                    context.getSelectionModel().clearAll();
+                    if (!context.getToolbarController().isWaypointsVisible()) {
+                        context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false);
+                    }
+                }
+                return new PanningDragHandler(context);
+            }
+        );
+    }
+
+    @Override
+    public InteractionMap getInteractionMap() {
+        return bindings;
+    }
+
+    @Override
+    public void enterState(CanvasController context) {
+        initBindings(context);
+    }
+
+    @Override
+    public void handleInput(InteractionEventData event, CanvasController context) {
+        initBindings(context);
+        // Falls handleInput direkt aufgerufen wird, leiten wir an die Map weiter
+        if (event.activeKey().isPresent()) {
+            bindings.handlePress(event);
+        } else if (event.isPrimaryButtonDown()) {
+            bindings.handlePress(event);
+        } else {
+            bindings.handleRelease(event);
         }
-        return false;
     }
 
     private void handleAddWaypointOnDoubleClick(InteractionEventData event, CanvasController context, UUID connId) {
-        // Wegpunkt erzeugen
         var waypoint = FmcFactory.createObject(
-                FmcType.WEGPUNKT,
+                FmcType.WAYPOINT,
                 event.worldX(), event.worldY(),
                 CoreRegistry.WAYPOINT_LAYER_ID
         );
 
-        // Einfügeindex berechnen
         var conn = context.getRegistry().getConnections().get(connId);
         int index = 0;
         if (conn != null) {
@@ -87,104 +191,57 @@ public class IdleState implements EditorState {
             index = GeometryUtils.calculateInsertionIndex(event.worldX(), event.worldY(), source, target, currentWps);
         }
 
-        // Command ausführen
         var cmd = new AddWaypointCommand(context.getRegistry(), connId, waypoint, index);
         context.getCommandHistory().executeCommand(cmd);
 
-        // Neuen Wegpunkt selektieren
-        var selectedIds = context.getSelectedObjectIds();
-        selectedIds.clear();
-        selectedIds.add(waypoint.id());
-        context.updateSelectionInView();
+        SelectionModel selectionModel = context.getSelectionModel();
+        selectionModel.clearObjectSelection();
+        selectionModel.addObjectToSelection(waypoint.id());
 
-        // Wegpunkt-Layer sichtbar machen
         context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, true);
     }
 
-    // -------------------------------------------------------------
-    // 3. Einfachklick auf eine Verbindung – nur Wegpunkte einblenden
-    // -------------------------------------------------------------
-    private boolean handleClickOnConnection(InteractionEventData event, CanvasController context) {
-        if (event.clickCount() == 1 && event.isPrimaryButtonDown()) {
-            UUID clickedConnectionId = context.findConnectionNear(event.worldX(), event.worldY(), 10.0);
-            if (clickedConnectionId != null) {
-                context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, true);
-                return true;
-            }
-        }
-        return false;
-    }
+    private void handleTextSelection(InteractionEventData event, CanvasController context, FmcText hitText) {
+        if (eventBus != null) {
+            eventBus.publish(new EditorActionEvent.SelectText(hitText.id(), event.isControlDown()));
+        } else {
+            SelectionModel selectionModel = context.getSelectionModel();
 
-    // -------------------------------------------------------------
-    // 4. Einfachklick auf ein Objekt – Selektion + Drag
-    // -------------------------------------------------------------
-    private boolean handleClickOnObject(InteractionEventData event, CanvasController context) {
-        if (event.clickCount() == 1 && event.isPrimaryButtonDown()) {
-            FmcObject hit = context.findObjectAt(event.worldX(), event.worldY());
-            if (hit != null) {
-                handleSelection(event, context, hit);
-                context.setCurrentState(new DragObjectsState(hit.id(), event, context));
-                return true;
+            if (!event.isControlDown()) {
+                selectionModel.clearObjectSelection();
+            }
+
+            if (event.isControlDown()) {
+                selectionModel.toggleTextSelection(hitText.id());
+            } else {
+                if (!selectionModel.isTextSelected(hitText.id())) {
+                    selectionModel.selectText(hitText.id());
+                }
             }
         }
-        return false;
     }
 
     private void handleSelection(InteractionEventData event, CanvasController context, FmcObject hit) {
-        var selectedIds = context.getSelectedObjectIds();
-
-        // Strg → toggle
-        if (event.isControlDown()) {
-            if (selectedIds.contains(hit.id())) {
-                selectedIds.remove(hit.id());
-            } else {
-                selectedIds.add(hit.id());
-            }
+        if (eventBus != null) {
+            eventBus.publish(new EditorActionEvent.SelectObject(hit.id(), event.isControlDown()));
         } else {
-            // Normal → nur dieses Objekt selektieren
-            if (!selectedIds.contains(hit.id())) {
-                selectedIds.clear();
-                selectedIds.add(hit.id());
+            SelectionModel selectionModel = context.getSelectionModel();
+
+            if (!event.isControlDown()) {
+                selectionModel.clearTextSelection();
             }
-        }
 
-        // Wegpunkte ausblenden, wenn ein Nicht-Wegpunkt selektiert wurde und die Toolbar es nicht anders verlangt
-        if (hit.type() != FmcType.WEGPUNKT && !context.getToolbarController().isWaypointsVisible()) {
-            context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false);
-        }
-
-        context.updateSelectionInView();
-    }
-
-    // -------------------------------------------------------------
-    // 5. Ctrl + Klick ins Leere → BoxSelection (Gummiband)
-    // -------------------------------------------------------------
-    private boolean handleCtrlClickOnEmpty(InteractionEventData event, CanvasController context) {
-        if (event.clickCount() == 1 && event.isPrimaryButtonDown() && event.isControlDown()) {
-            if (context.findObjectAt(event.worldX(), event.worldY()) == null) {
-                context.setCurrentState(new BoxSelectionState(event, context));
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // -------------------------------------------------------------
-    // 6. Normaler Klick ins Leere → Auswahl leeren + Panning
-    // -------------------------------------------------------------
-    private boolean handleClickOnEmpty(InteractionEventData event, CanvasController context) {
-        if (event.clickCount() == 1 && event.isPrimaryButtonDown() && !event.isControlDown()) {
-            if (context.findObjectAt(event.worldX(), event.worldY()) == null) {
-                context.getSelectedObjectIds().clear();
-                context.updateSelectionInView();
-
-                if (!context.getToolbarController().isWaypointsVisible()) {
-                    context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false);
+            if (event.isControlDown()) {
+                selectionModel.toggleObjectSelection(hit.id());
+            } else {
+                if (!selectionModel.isObjectSelected(hit.id())) {
+                    selectionModel.selectObject(hit.id()); // Löscht automatisch die alte Objektauswahl
                 }
-                context.setCurrentState(new PanningState(event, context));
-                return true;
+            }
+
+            if (hit.type() != FmcType.WAYPOINT && !context.getToolbarController().isWaypointsVisible()) {
+                context.getRegistry().setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false);
             }
         }
-        return false;
     }
 }

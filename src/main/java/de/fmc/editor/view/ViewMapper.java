@@ -1,13 +1,13 @@
 package de.fmc.editor.view;
 
-import com.google.gson.Gson;
-import com.google.gson.GsonBuilder;
 import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.event.RegistryEvent;
 import de.fmc.editor.core.event.RegistryListener;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.Handle;
 import javafx.scene.shape.Shape;
+import javafx.scene.text.Text;
+
 import java.util.Collection;
 import java.util.List;
 import java.util.UUID;
@@ -18,20 +18,27 @@ public class ViewMapper implements RegistryListener {
     private final ShapeViewMapper shapeMapper;
     private final ConnectionViewMapper connectionMapper;
     private final SelectionViewManager selectionManager;
+    private final TextViewMapper textMapper;
 
     public ViewMapper(GraphView graphView, CoreRegistry registry) {
         this.registry = registry;
         this.shapeMapper = new ShapeViewMapper(graphView);
         this.connectionMapper = new ConnectionViewMapper(graphView, registry);
         this.selectionManager = new SelectionViewManager(graphView, shapeMapper, connectionMapper);
+        this.textMapper = new TextViewMapper(graphView);
     }
 
+    // --------------------- Öffentliche API ---------------------
     public void setHover(UUID hoveredObjectId, UUID hoveredConnectionId) {
         selectionManager.setHover(hoveredObjectId, hoveredConnectionId);
     }
 
     public void setSelectedObjects(Collection<UUID> objectIds) {
         selectionManager.setSelectedObjects(objectIds);
+    }
+
+    public void setSelectedTexts(Collection<UUID> textIds) {
+        textMapper.setSelectedTexts(textIds);
     }
 
     public void setRoutingStrategy(RoutingStrategy strategy) {
@@ -42,110 +49,167 @@ public class ViewMapper implements RegistryListener {
         return SelectionViewManager.getHandles(obj);
     }
 
-    @Override
-    public void handleEvent(RegistryEvent event) {
-        switch (event) {
-            case RegistryEvent.ObjectAdded(var obj) -> {
-                shapeMapper.handleObjectAdded(obj);
-                if (selectionManager.getSelectedObjectIds().contains(obj.id())) {
-                    Shape s = shapeMapper.getShape(obj.id());
-                    if (s != null) {
-                        // This is a bit tricky since SelectionViewManager handles effects.
-                        // We might want to re-apply selection after adding.
-                        selectionManager.setSelectedObjects(selectionManager.getSelectedObjectIds());
-                    }
-                }
-                connectionMapper.updateConnectionsForObject(obj.id());
-            }
-            case RegistryEvent.ObjectRemoved(var id) -> {
-                shapeMapper.handleObjectRemoved(id);
-                connectionMapper.updateConnectionsForObject(id);
-            }
-            case RegistryEvent.ObjectMoved(var id, var x, var y) -> {
-                shapeMapper.handleObjectMoved(id, x, y);
-                connectionMapper.updateConnectionsForObject(id);
-            }
-            case RegistryEvent.ObjectResized(var id, var w, var h) -> {
-                // OPTIMIERUNG: O(1) statt O(N) Stream-Suche
-                FmcObject obj = registry.getObject(id);
-                if (obj != null) {
-                    shapeMapper.handleObjectResized(id, obj.x(), obj.y(), w, h);
-                }
-                connectionMapper.updateConnectionsForObject(id);
-            }
-            case RegistryEvent.ConnectionAdded(var id, var conn) -> connectionMapper.handleConnectionAdded(id, conn);
-            case RegistryEvent.ConnectionRemoved(var id) -> connectionMapper.handleConnectionRemoved(id);
-            case RegistryEvent.ConnectionUpdated(var id, var conn) -> connectionMapper.handleConnectionUpdated(id, conn);
-            case RegistryEvent.LayerAdded(var layer) -> {}
-            case RegistryEvent.LayerRemoved(var id) -> {}
-            case RegistryEvent.LayerVisibilityChanged(var id, var visible) -> handleLayerVisibilityChanged(id, visible);
-            case RegistryEvent.RegistryReset() -> handleRegistryReset();
-        }
-
-        // Handles refreshen, falls das selektierte Objekt betroffen ist
-        UUID singleId = selectionManager.getSingleSelectedObjectId();
-        if (singleId != null) {
-            UUID affectedId = switch (event) {
-                case RegistryEvent.ObjectMoved(var id, var x, var y) -> id;
-                case RegistryEvent.ObjectResized(var id, var w, var h) -> id;
-                default -> null;
-            };
-
-            if (singleId.equals(affectedId)) {
-                // OPTIMIERUNG: O(1) statt O(N) Stream-Suche
-                FmcObject obj = registry.getObject(singleId);
-                if (obj != null) {
-                    selectionManager.refreshHandles(getHandles(obj));
-                }
-            }
-        }
-
-        Gson gson = new GsonBuilder().setPrettyPrinting().create();
+    public TextViewMapper getTextMapper() {
+        return textMapper;
     }
 
-    public void setSelectedObject(UUID id, List<Handle> handles) {
-        selectionManager.setSingleSelectedObject(id, handles);
+    // --------------------- RegistryListener ---------------------
+    @Override
+    public void handleEvent(RegistryEvent event) {
+        // 1. Event-spezifische Verarbeitung
+        switch (event) {
+            case RegistryEvent.ObjectAdded e -> handleObjectAdded(e);
+            case RegistryEvent.ObjectRemoved e -> handleObjectRemoved(e);
+            case RegistryEvent.ObjectMoved e -> handleObjectMoved(e);
+            case RegistryEvent.ObjectResized e -> handleObjectResized(e);
+            case RegistryEvent.ConnectionAdded e -> handleConnectionAdded(e);
+            case RegistryEvent.ConnectionRemoved e -> handleConnectionRemoved(e);
+            case RegistryEvent.ConnectionUpdated e -> handleConnectionUpdated(e);
+            case RegistryEvent.LayerAdded e -> handleLayerAdded(e);
+            case RegistryEvent.LayerRemoved e -> handleLayerRemoved(e);
+            case RegistryEvent.LayerVisibilityChanged e -> handleLayerVisibilityChanged(e);
+            case RegistryEvent.TextAdded e -> handleTextAdded(e);
+            case RegistryEvent.TextRemoved e -> handleTextRemoved(e);
+            case RegistryEvent.TextUpdated e -> handleTextUpdated(e);
+            case RegistryEvent.RegistryReset e -> handleRegistryReset();
+        }
+
+        // 2. Handles aktualisieren, falls das selektierte Objekt betroffen ist
+        refreshHandlesIfNeeded(event);
+    }
+
+    // --------------------- Event-Handler (privat) ---------------------
+    private void handleObjectAdded(RegistryEvent.ObjectAdded e) {
+        FmcObject obj = e.object();
+        shapeMapper.handleObjectAdded(obj);
+        if (selectionManager.getSelectedObjectIds().contains(obj.id())) {
+            Shape s = shapeMapper.getShape(obj.id());
+            if (s != null) {
+                selectionManager.setSelectedObjects(selectionManager.getSelectedObjectIds());
+            }
+        }
+        connectionMapper.updateConnectionsForObject(obj.id());
+    }
+
+    private void handleObjectRemoved(RegistryEvent.ObjectRemoved e) {
+        UUID id = e.id();
+        shapeMapper.handleObjectRemoved(id);
+        connectionMapper.updateConnectionsForObject(id);
+    }
+
+    private void handleObjectMoved(RegistryEvent.ObjectMoved e) {
+        UUID id = e.id();
+        shapeMapper.handleObjectMoved(id, e.newX(), e.newY());
+        connectionMapper.updateConnectionsForObject(id);
+    }
+
+    private void handleObjectResized(RegistryEvent.ObjectResized e) {
+        UUID id = e.id();
+        FmcObject obj = registry.getObject(id);
+        if (obj != null) {
+            shapeMapper.handleObjectResized(id, obj.x(), obj.y(), e.newW(), e.newH());
+        }
+        connectionMapper.updateConnectionsForObject(id);
+    }
+
+    private void handleConnectionAdded(RegistryEvent.ConnectionAdded e) {
+        connectionMapper.handleConnectionAdded(e.id(), e.connection());
+    }
+
+    private void handleConnectionRemoved(RegistryEvent.ConnectionRemoved e) {
+        connectionMapper.handleConnectionRemoved(e.id());
+    }
+
+    private void handleConnectionUpdated(RegistryEvent.ConnectionUpdated e) {
+        connectionMapper.handleConnectionUpdated(e.id(), e.connection());
+    }
+
+    private void handleLayerAdded(RegistryEvent.LayerAdded e) {
+        // nichts zu tun
+    }
+
+    private void handleLayerRemoved(RegistryEvent.LayerRemoved e) {
+        // nichts zu tun
+    }
+
+    private void handleLayerVisibilityChanged(RegistryEvent.LayerVisibilityChanged e) {
+        UUID layerId = e.id();
+        boolean visible = e.visible();
+        // Shapes
+        registry.getObjects().forEach(obj -> {
+            if (obj.layerId().equals(layerId)) {
+                Shape node = shapeMapper.getShape(obj.id());
+                if (node != null) node.setVisible(visible);
+            }
+        });
+        // Connections
+        connectionMapper.getVisualConnections().forEach((connId, group) -> {
+            var conn = registry.getConnections().get(connId);
+            if (conn != null) {
+                FmcObject src = registry.getObject(conn.sourceId());
+                FmcObject tgt = registry.getObject(conn.targetId());
+                if ((src != null && src.layerId().equals(layerId)) ||
+                        (tgt != null && tgt.layerId().equals(layerId))) {
+                    group.setVisible(visible);
+                }
+            }
+        });
+        // Texts
+        registry.getTexts().forEach(txt -> {
+            if (txt.layerId().equals(layerId)) {
+                Text node = textMapper.getTextNode(txt.id());
+                if (node != null) node.setVisible(visible);
+            }
+        });
+    }
+
+    private void handleTextAdded(RegistryEvent.TextAdded e) {
+        textMapper.handleTextAdded(e.text());
+    }
+
+    private void handleTextRemoved(RegistryEvent.TextRemoved e) {
+        textMapper.handleTextRemoved(e.id());
+    }
+
+    private void handleTextUpdated(RegistryEvent.TextUpdated e) {
+        textMapper.handleTextUpdated(e.id(), e.text());
     }
 
     private void handleRegistryReset() {
         shapeMapper.clear();
         connectionMapper.clear();
         selectionManager.clear();
+        textMapper.clear();
 
         registry.getObjects().forEach(shapeMapper::handleObjectAdded);
         registry.getConnections().forEach(connectionMapper::handleConnectionAdded);
-        registry.getLayers().forEach((id, layer) -> handleLayerVisibilityChanged(id, layer.visible()));
+        registry.getTexts().forEach(textMapper::handleTextAdded);
+        registry.getLayers().forEach((id, layer) -> handleLayerVisibilityChanged(
+                new RegistryEvent.LayerVisibilityChanged(id, layer.visible())
+        ));
     }
 
-    /**
-     * OPTIMIERT: Schaltet die Sichtbarkeit von Objekten und deren zugehörigen Verbindungen
-     * deutlich effizienter und ohne verschachtelte O(N * M) Schleifen um.
-     */
-    private void handleLayerVisibilityChanged(UUID layerId, boolean visible) {
-        // 1. Objekte des Layers umschalten
-        registry.getObjects().forEach(obj -> {
-            if (obj.layerId().equals(layerId)) {
-                Shape node = shapeMapper.getShape(obj.id());
-                if (node != null) {
-                    node.setVisible(visible);
-                }
+    // --------------------- Hilfsmethoden ---------------------
+    private void refreshHandlesIfNeeded(RegistryEvent event) {
+        UUID singleId = selectionManager.getSingleSelectedObjectId();
+        if (singleId == null) return;
+
+        UUID affectedId = switch (event) {
+            case RegistryEvent.ObjectMoved(var id, var x, var y) -> id;
+            case RegistryEvent.ObjectResized(var id, var w, var h) -> id;
+            default -> null;
+        };
+
+        if (singleId.equals(affectedId)) {
+            FmcObject obj = registry.getObject(singleId);
+            if (obj != null) {
+                selectionManager.refreshHandles(getHandles(obj));
             }
-        });
+        }
+    }
 
-        // 2. Verbindungen, die an diesem Layer hängen, umschalten (über O(1) Registry-Lookups)
-        connectionMapper.getVisualConnections().forEach((connId, group) -> {
-            var conn = registry.getConnections().get(connId);
-            if (conn != null) {
-                FmcObject src = registry.getObject(conn.sourceId());
-                FmcObject tgt = registry.getObject(conn.targetId());
-
-                boolean srcMatches = (src != null && src.layerId().equals(layerId));
-                boolean tgtMatches = (tgt != null && tgt.layerId().equals(layerId));
-
-                if (srcMatches || tgtMatches) {
-                    group.setVisible(visible);
-                }
-            }
-        });
+    // --------------------- Sonstige ---------------------
+    public void setSelectedObject(UUID id, List<Handle> handles) {
+        selectionManager.setSingleSelectedObject(id, handles);
     }
 }

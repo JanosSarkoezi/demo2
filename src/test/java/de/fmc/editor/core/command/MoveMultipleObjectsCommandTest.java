@@ -22,8 +22,8 @@ public class MoveMultipleObjectsCommandTest {
     @BeforeEach
     public void setUp() {
         registry = new CoreRegistry();
-        obj1 = FmcFactory.createObject(FmcType.KREIS, 10, 10, CoreRegistry.DEFAULT_LAYER_ID);
-        obj2 = FmcFactory.createObject(FmcType.QUADRAT, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
+        obj1 = FmcFactory.createObject(FmcType.CIRCLE, 10, 10, CoreRegistry.DEFAULT_LAYER_ID);
+        obj2 = FmcFactory.createObject(FmcType.RECTANGLE, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
         registry.addObject(obj1);
         registry.addObject(obj2);
     }

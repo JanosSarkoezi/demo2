@@ -24,7 +24,7 @@ public class CommandHistoryTest {
 
     @Test
     public void testCreateObjectCommandExecuteAndUndo() {
-        FmcObject obj = FmcFactory.createObject(FmcType.KREIS, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
+        FmcObject obj = FmcFactory.createObject(FmcType.CIRCLE, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
         CreateObjectCommand cmd = new CreateObjectCommand(registry, obj);
 
         history.executeCommand(cmd);
@@ -41,7 +41,7 @@ public class CommandHistoryTest {
 
     @Test
     public void testMoveObjectCommandExecuteAndUndo() {
-        FmcObject obj = FmcFactory.createObject(FmcType.KREIS, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
+        FmcObject obj = FmcFactory.createObject(FmcType.CIRCLE, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
         registry.addObject(obj);
 
         MoveObjectCommand cmd = new MoveObjectCommand(registry, obj.id(), 100, 100, 200, 300);
@@ -64,8 +64,8 @@ public class CommandHistoryTest {
 
     @Test
     public void testCreateConnectionCommandValidationAndUndo() {
-        FmcObject source = FmcFactory.createObject(FmcType.KREIS, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
-        FmcObject target = FmcFactory.createObject(FmcType.QUADRAT, 300, 300, CoreRegistry.DEFAULT_LAYER_ID);
+        FmcObject source = FmcFactory.createObject(FmcType.CIRCLE, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
+        FmcObject target = FmcFactory.createObject(FmcType.RECTANGLE, 300, 300, CoreRegistry.DEFAULT_LAYER_ID);
         registry.addObject(source);
         registry.addObject(target);
 
@@ -80,7 +80,7 @@ public class CommandHistoryTest {
         assertEquals(0, registry.getConnections().size(), "Connection should be removed on undo");
 
         // Invalid connection: Kreis to Kreis (Bipartite validation)
-        FmcObject anotherCircle = FmcFactory.createObject(FmcType.KREIS, 400, 400, CoreRegistry.DEFAULT_LAYER_ID);
+        FmcObject anotherCircle = FmcFactory.createObject(FmcType.CIRCLE, 400, 400, CoreRegistry.DEFAULT_LAYER_ID);
         registry.addObject(anotherCircle);
 
         CreateConnectionCommand invalidCmd = new CreateConnectionCommand(registry, source.id(), anotherCircle.id(), Collections.emptyList());
@@ -96,7 +96,7 @@ public class CommandHistoryTest {
         assertDoesNotThrow(() -> history.undo());
         assertDoesNotThrow(() -> history.redo());
 
-        FmcObject obj = FmcFactory.createObject(FmcType.KREIS, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
+        FmcObject obj = FmcFactory.createObject(FmcType.CIRCLE, 100, 100, CoreRegistry.DEFAULT_LAYER_ID);
         CreateObjectCommand cmd = new CreateObjectCommand(registry, obj);
 
         history.executeCommand(cmd);

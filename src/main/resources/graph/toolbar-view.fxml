@@ -47,6 +47,31 @@
         </graphic>
     </ToggleButton>
 
+    <ToggleButton fx:id="textButton" toggleGroup="$toolGroup"
+                  maxWidth="Infinity" styleClass="tool-button"
+                  text="_Text" onAction="#onTextClick">
+        <tooltip><Tooltip text="Text einfügen (Alt+4)"/></tooltip>
+        <graphic>
+            <Label text="A" style="-fx-font-weight: bold; -fx-font-size: 14px;"/>
+        </graphic>
+    </ToggleButton>
+
+    <Separator>
+        <VBox.margin><Insets top="10" bottom="10"/></VBox.margin>
+    </Separator>
+
+    <Label text="Text" styleClass="section-label"/>
+
+    <ComboBox fx:id="fontFamilyCombo" promptText="Schriftart" maxWidth="Infinity" />
+
+    <HBox spacing="5" alignment="CENTER_LEFT">
+        <Spinner fx:id="fontSizeSpinner" editable="true" prefWidth="65"/>
+        <CheckBox fx:id="boldCheckbox" text="B"/>
+        <CheckBox fx:id="italicCheckbox" text="I"/>
+    </HBox>
+
+    <ColorPicker fx:id="textColorPicker" promptText="Farbe" maxWidth="Infinity" />
+
     <Separator>
         <VBox.margin><Insets top="10" bottom="10"/></VBox.margin>
     </Separator>

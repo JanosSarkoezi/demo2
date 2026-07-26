@@ -4,27 +4,33 @@ import de.fmc.editor.core.CoreRegistry;
 import de.fmc.editor.core.command.CommandHistory;
 import de.fmc.editor.core.model.FmcObject;
 import de.fmc.editor.core.model.FmcType;
+import de.fmc.editor.core.model.SelectionModel;
 import de.fmc.editor.state.CreateConnectionState;
 import de.fmc.editor.state.CreateObjectState;
+import de.fmc.editor.state.CreateTextState;
 import de.fmc.editor.state.EditorState;
 import de.fmc.editor.state.IdleState;
 import de.fmc.editor.state.InteractionEventData;
+import de.fmc.editor.state.InteractionMap;
 import de.fmc.editor.state.ResizeState;
 import de.fmc.editor.view.GraphView;
 import de.fmc.editor.view.ViewMapper;
 import javafx.fxml.FXML;
 import javafx.geometry.Point2D;
-import javafx.scene.Group;
-import javafx.scene.Node;
 import javafx.scene.input.KeyEvent;
 import javafx.scene.input.MouseEvent;
 import javafx.scene.input.ScrollEvent;
-import javafx.scene.shape.Path;
 
+import de.fmc.editor.core.event.EventBus;
+import de.fmc.editor.core.event.EditorActionEvent;
+import de.fmc.editor.state.EditorReadContext;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.Optional;
 import java.util.UUID;
 
-public class CanvasController {
+public class CanvasController implements EditorReadContext {
 
     @FXML
     private GraphView drawingPane;
@@ -33,7 +39,17 @@ public class CanvasController {
     private CoreRegistry registry;
     private ToolbarController toolbarController;
     private ViewMapper viewMapper;
-    private EditorState currentState = new IdleState();
+    private final EventBus eventBus = new EventBus();
+    private EditorState currentState = new IdleState(eventBus);
+    private final SelectionModel selectionModel = new SelectionModel();
+
+    public CanvasController() {
+        registerEventSubscriptions();
+    }
+
+    public SelectionModel getSelectionModel() {
+        return selectionModel;
+    }
 
     private final CommandHistory commandHistory = new CommandHistory();
 
@@ -55,14 +71,17 @@ public class CanvasController {
 
     public void setViewMapper(ViewMapper viewMapper) {
         this.viewMapper = viewMapper;
+
+        selectionModel.setOnChangeListener(this::updateSelectionInView);
     }
 
     private void applyStateForTool(Tool tool) {
         switch (tool) {
-            case CIRCLE_CREATE -> setCurrentState(new CreateObjectState(FmcType.KREIS));
-            case RECTANGLE_CREATE -> setCurrentState(new CreateObjectState(FmcType.QUADRAT));
-            case CONNECTION_CREATE -> setCurrentState(new CreateConnectionState());
-            case SELECT -> setCurrentState(new IdleState());
+            case CIRCLE_CREATE -> setCurrentState(new CreateObjectState(FmcType.CIRCLE, eventBus));
+            case RECTANGLE_CREATE -> setCurrentState(new CreateObjectState(FmcType.RECTANGLE, eventBus));
+            case CONNECTION_CREATE -> setCurrentState(new CreateConnectionState(eventBus));
+            case TEXT_CREATE -> setCurrentState(new CreateTextState(eventBus));
+            case SELECT -> setCurrentState(new IdleState(eventBus));
         }
     }
 
@@ -79,14 +98,19 @@ public class CanvasController {
         applyStateForTool(this.activeTool); // Reaktiviert nach dem Draggen
     }
 
+    /**
+     * Setzt den Editor zurück in den Idle-Zustand (Auswahlmodus) und löscht alle Selektionen.
+     * Wird z.B. bei ESC oder nach Beendigung von Werkzeugen aufgerufen.
+     */
     public void resetToIdleState() {
-        setCurrentState(new IdleState());
+        setCurrentState(new IdleState(eventBus));
         setActiveTool(Tool.SELECT);
+
         if (toolbarController != null) {
             toolbarController.clearSelection();
         }
-        getSelectedObjectIds().clear();
-        updateSelectionInView();
+
+        selectionModel.clearAll();
     }
 
     public void setCurrentState(EditorState state) {
@@ -122,70 +146,44 @@ public class CanvasController {
         return toolbarController;
     }
 
-    private final java.util.Set<UUID> selectedObjectIds = new java.util.HashSet<>();
-
-    public java.util.Set<UUID> getSelectedObjectIds() {
-        return selectedObjectIds;
-    }
-
     public void updateSelectionInView() {
         if (viewMapper != null) {
-            viewMapper.setSelectedObjects(selectedObjectIds);
+            viewMapper.setSelectedObjects(selectionModel.getSelectedObjectIds());
+            viewMapper.setSelectedTexts(selectionModel.getSelectedTextIds());
         }
     }
 
     @FXML
     public void onMousePressed(MouseEvent event) {
-        Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
-        InteractionEventData data = new InteractionEventData(
-            worldPos.getX(), worldPos.getY(),
-            event.getSceneX(), event.getSceneY(),
-            event.getClickCount(),
-            event.isPrimaryButtonDown(),
-            event.isSecondaryButtonDown(),
-            event.isMiddleButtonDown(),
-            event.isControlDown(),
-            event.isShiftDown(),
-            event.isAltDown(),
-            Optional.empty()
-        );
-        currentState.handleInput(data, this);
+        InteractionEventData data = InteractionEventData.from(event, drawingPane::getMouseInWorld);
+        InteractionMap map = currentState.getInteractionMap();
+        if (map != null) {
+            map.handlePress(data);
+        } else {
+            currentState.handleInput(data, this);
+        }
     }
 
     @FXML
     public void onMouseDragged(MouseEvent event) {
-        Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
-        InteractionEventData data = new InteractionEventData(
-            worldPos.getX(), worldPos.getY(),
-            event.getSceneX(), event.getSceneY(),
-            event.getClickCount(),
-            event.isPrimaryButtonDown(),
-            event.isSecondaryButtonDown(),
-            event.isMiddleButtonDown(),
-            event.isControlDown(),
-            event.isShiftDown(),
-            event.isAltDown(),
-            Optional.empty()
-        );
-        currentState.handleInput(data, this);
+        InteractionEventData data = InteractionEventData.from(event, drawingPane::getMouseInWorld);
+        InteractionMap map = currentState.getInteractionMap();
+        if (map != null) {
+            map.handleDrag(data);
+        } else {
+            currentState.handleInput(data, this);
+        }
     }
 
     @FXML
     public void onMouseReleased(MouseEvent event) {
-        Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
-        InteractionEventData data = new InteractionEventData(
-            worldPos.getX(), worldPos.getY(),
-            event.getSceneX(), event.getSceneY(),
-            event.getClickCount(),
-            event.isPrimaryButtonDown(),
-            event.isSecondaryButtonDown(),
-            event.isMiddleButtonDown(),
-            event.isControlDown(),
-            event.isShiftDown(),
-            event.isAltDown(),
-            Optional.empty()
-        );
-        currentState.handleInput(data, this);
+        InteractionEventData data = InteractionEventData.from(event, drawingPane::getMouseInWorld);
+        InteractionMap map = currentState.getInteractionMap();
+        if (map != null) {
+            map.handleRelease(data);
+        } else {
+            currentState.handleInput(data, this);
+        }
     }
 
     private UUID currentHoveredObjectId = null;
@@ -195,6 +193,17 @@ public class CanvasController {
     public void onMouseMoved(MouseEvent event) {
         Point2D worldPos = drawingPane.getMouseInWorld(event.getSceneX(), event.getSceneY());
         handleHover(worldPos.getX(), worldPos.getY());
+    }
+
+    @FXML
+    public void onKeyPressed(KeyEvent event) {
+        InteractionEventData data = InteractionEventData.from(event);
+        InteractionMap map = currentState.getInteractionMap();
+        if (map != null) {
+            map.handlePress(data);
+        } else {
+            currentState.handleInput(data, this);
+        }
     }
 
     private void handleHover(double worldX, double worldY) {
@@ -225,51 +234,12 @@ public class CanvasController {
     }
 
     @FXML
-    public void onKeyPressed(KeyEvent event) {
-        // Nur Tasten verarbeiten, wenn keine Texteingabe aktiv ist (z.B. kein TextField)
-        // Hier nehmen wir alle Tasten an.
-        // Point2D worldPos = drawingPane.getMouseInWorld(/* aktuelle Mausposition holen */);
-        // Die Mausposition könntest du dir in Feldern merken, oder einfach 0/0 übergeben,
-        // da sie für Tastenkürzel meist nicht gebraucht wird.
-        InteractionEventData data = new InteractionEventData(
-                0, 0,                     // worldX/Y – für ESC nicht relevant
-                0, 0,                     // sceneX/Y – nicht relevant
-                0,                        // clickCount – nicht relevant
-                false, false, false,      // Mausbuttons – nicht gedrückt
-                event.isControlDown(),
-                event.isShiftDown(),
-                event.isAltDown(),
-                Optional.of(event.getCode())
-        );
-        currentState.handleInput(data, this);
-    }
-
-    @FXML
     public void handleScroll(ScrollEvent event) {
         drawingPane.handleZoom(event);
     }
 
     public GraphView getDrawingPane() {
         return drawingPane;
-    }
-
-    public UUID findConnectionAt(double sceneX, double sceneY) {
-        for (Node node : drawingPane.getConnectionLayer().getChildren()) {
-            if (node instanceof Group group) {
-                for (Node child : group.getChildren()) {
-                    if (child instanceof Path path) {
-                        if (group.isVisible() && path.contains(path.sceneToLocal(sceneX, sceneY))) {
-                            return (UUID) group.getProperties().get("UUID");
-                        }
-                    }
-                }
-            } else if (node instanceof Path path) {
-                if (path.isVisible() && path.contains(path.sceneToLocal(sceneX, sceneY))) {
-                    return (UUID) path.getProperties().get("UUID");
-                }
-            }
-        }
-        return null;
     }
 
     public UUID findConnectionNear(double worldX, double worldY, double tolerance) {
@@ -342,14 +312,14 @@ public class CanvasController {
                     return false;
                 }
 
-                if (obj.type() == FmcType.KREIS || obj.type() == FmcType.WEGPUNKT) {
+                if (obj.type() == FmcType.CIRCLE || obj.type() == FmcType.WAYPOINT) {
 
                     // Für Wegpunkte geben wir eine etwas größere Klick-Zone (10px statt 5px)
-                    double radius = (obj.type() == FmcType.WEGPUNKT) ? 12.0 : (obj.width() / 2);
+                    double radius = (obj.type() == FmcType.WAYPOINT) ? 12.0 : (obj.width() / 2);
                     double dx = obj.x() - x;
                     double dy = obj.y() - y;
                     return (dx * dx + dy * dy) <= (radius * radius);
-                } else if (obj.type() == FmcType.QUADRAT) {
+                } else if (obj.type() == FmcType.RECTANGLE) {
                     double halfW = obj.width() / 2;
                     double halfH = obj.height() / 2;
                     return x >= (obj.x() - halfW) && x <= (obj.x() + halfW) &&
@@ -359,5 +329,179 @@ public class CanvasController {
             })
             .findFirst()
             .orElse(null);
+    }
+
+    public de.fmc.editor.core.model.FmcText findTextAt(double x, double y) {
+        return registry.getTexts().stream()
+            .filter(t -> {
+                var layer = registry.getLayers().get(t.layerId());
+                if (layer != null && !layer.visible()) {
+                    return false;
+                }
+                double w = t.width() > 0 ? t.width() : 100;
+                double h = 20;
+                double left = t.x() - w / 2;
+                double right = t.x() + w / 2;
+                double top = t.y() - h;
+                double bottom = t.y() + 5;
+                return x >= left && x <= right && y >= top && y <= bottom;
+            })
+            .findFirst()
+            .orElse(null);
+    }
+
+    @Override
+    public boolean isSnapToGrid() {
+        return toolbarController != null && toolbarController.isSnapToGrid();
+    }
+
+    @Override
+    public boolean isWaypointsVisible() {
+        return toolbarController != null && toolbarController.isWaypointsVisible();
+    }
+
+    @Override
+    public boolean isSticky() {
+        return toolbarController != null && toolbarController.isSticky();
+    }
+
+    @Override
+    public Set<UUID> getSelectedObjectIds() {
+        return selectionModel.getSelectedObjectIds();
+    }
+
+    @Override
+    public Set<UUID> getSelectedTextIds() {
+        return selectionModel.getSelectedTextIds();
+    }
+
+    private void registerEventSubscriptions() {
+        eventBus.subscribe(EditorActionEvent.SelectObject.class, e -> {
+            if (!e.isControlDown()) {
+                selectionModel.clearTextSelection();
+            }
+            if (e.isControlDown()) {
+                selectionModel.toggleObjectSelection(e.id());
+            } else {
+                if (!selectionModel.isObjectSelected(e.id())) {
+                    selectionModel.selectObject(e.id());
+                }
+            }
+            FmcObject hit = registry.getObject(e.id());
+            if (hit != null && hit.type() != FmcType.WAYPOINT && !isWaypointsVisible()) {
+                registry.setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, false);
+            }
+        });
+
+        eventBus.subscribe(EditorActionEvent.SelectText.class, e -> {
+            if (!e.isControlDown()) {
+                selectionModel.clearObjectSelection();
+            }
+            if (e.isControlDown()) {
+                selectionModel.toggleTextSelection(e.id());
+            } else {
+                if (!selectionModel.isTextSelected(e.id())) {
+                    selectionModel.selectText(e.id());
+                }
+            }
+        });
+
+        eventBus.subscribe(EditorActionEvent.ClearSelection.class, e -> {
+            selectionModel.clearAll();
+        });
+
+        eventBus.subscribe(EditorActionEvent.ChangeState.class, e -> {
+            setCurrentState(e.newState());
+        });
+
+        eventBus.subscribe(EditorActionEvent.ReactivateTool.class, e -> {
+            reactivateCurrentTool();
+        });
+
+        eventBus.subscribe(EditorActionEvent.SetLayerVisibility.class, e -> {
+            if (e.layerId().equals(CoreRegistry.WAYPOINT_LAYER_ID)) {
+                if (!e.visible() && isWaypointsVisible()) {
+                    return;
+                }
+            }
+            registry.setLayerVisibility(e.layerId(), e.visible());
+        });
+
+        eventBus.subscribe(EditorActionEvent.AddWaypoint.class, e -> {
+            var waypoint = de.fmc.editor.core.factory.FmcFactory.createObject(
+                    FmcType.WAYPOINT,
+                    e.x(), e.y(),
+                    CoreRegistry.WAYPOINT_LAYER_ID
+            );
+
+            var conn = registry.getConnections().get(e.connectionId());
+            int index = 0;
+            if (conn != null) {
+                var source = registry.getObject(conn.sourceId());
+                var target = registry.getObject(conn.targetId());
+                List<FmcObject> currentWps = new ArrayList<>();
+                for (UUID id : conn.waypointIds()) {
+                    FmcObject wp = registry.getObject(id);
+                    if (wp != null) currentWps.add(wp);
+                }
+                index = de.fmc.editor.core.util.GeometryUtils.calculateInsertionIndex(e.x(), e.y(), source, target, currentWps);
+            }
+
+            var cmd = new de.fmc.editor.core.command.AddWaypointCommand(registry, e.connectionId(), waypoint, index);
+            commandHistory.executeCommand(cmd);
+
+            selectionModel.clearObjectSelection();
+            selectionModel.addObjectToSelection(waypoint.id());
+
+            registry.setLayerVisibility(CoreRegistry.WAYPOINT_LAYER_ID, true);
+        });
+
+        eventBus.subscribe(EditorActionEvent.ResetToIdle.class, e -> {
+            resetToIdleState();
+        });
+
+        eventBus.subscribe(EditorActionEvent.CreateObject.class, e -> {
+            UUID layerId = CoreRegistry.DEFAULT_LAYER_ID;
+            var obj = de.fmc.editor.core.factory.FmcFactory.createObject(e.type(), e.x(), e.y(), layerId);
+            var cmd = new de.fmc.editor.core.command.CreateObjectCommand(registry, obj);
+            commandHistory.executeCommand(cmd);
+
+            if (!isSticky()) {
+                reactivateCurrentTool();
+            }
+        });
+
+        eventBus.subscribe(EditorActionEvent.CreateWaypoint.class, e -> {
+            var wegpunkt = new FmcObject(e.id(), FmcType.WAYPOINT, e.x(), e.y(), 10, 10, CoreRegistry.WAYPOINT_LAYER_ID);
+            var cmd = new de.fmc.editor.core.command.CreateObjectCommand(registry, wegpunkt);
+            commandHistory.executeCommand(cmd);
+        });
+
+        eventBus.subscribe(EditorActionEvent.CreateConnection.class, e -> {
+            var cmd = new de.fmc.editor.core.command.CreateConnectionCommand(registry, e.sourceId(), e.targetId(), e.waypointIds());
+            cmd.execute();
+
+            if (cmd.isSuccess()) {
+                commandHistory.addExecutedCommand(cmd);
+                selectionModel.clearObjectSelection();
+                reactivateCurrentTool();
+            }
+        });
+
+        eventBus.subscribe(EditorActionEvent.CreateText.class, e -> {
+            var cmd = new de.fmc.editor.core.command.CreateTextCommand(registry, e.text());
+            commandHistory.executeCommand(cmd);
+        });
+
+        eventBus.subscribe(EditorActionEvent.ResizeObject.class, e -> {
+            registry.resizeObject(e.id(), e.newW(), e.newH());
+        });
+
+        eventBus.subscribe(EditorActionEvent.CommitResize.class, e -> {
+            var cmd = new de.fmc.editor.core.command.ResizeObjectCommand(
+                registry, e.id(), e.startW(), e.startH(), e.endW(), e.endH()
+            );
+            commandHistory.executeCommand(cmd);
+        });
     }
 }
